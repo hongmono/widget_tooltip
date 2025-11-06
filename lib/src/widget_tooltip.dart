@@ -6,67 +6,113 @@ import 'package:widget_tooltip/src/triangles/left_triangle.dart';
 import 'package:widget_tooltip/src/triangles/right_triangle.dart';
 import 'package:widget_tooltip/src/triangles/upper_triangle.dart';
 
+/// Defines the direction where the tooltip should appear relative to the target widget.
 enum WidgetTooltipDirection {
-  /// Top
+  /// Position tooltip above the target widget.
   top,
 
-  /// Bottom
+  /// Position tooltip below the target widget.
   bottom,
 
-  /// Left
+  /// Position tooltip to the left of the target widget.
   left,
 
-  /// Right
+  /// Position tooltip to the right of the target widget.
   right,
 }
 
+/// Defines how the tooltip is triggered to show.
 enum WidgetTooltipTriggerMode {
-  /// Show tooltip when tap
+  /// Show tooltip when the target widget is tapped.
   tap,
 
-  /// Show tooltip when long press
+  /// Show tooltip when the target widget is long-pressed.
   longPress,
 
-  /// Show tooltip when double tap
+  /// Show tooltip when the target widget is double-tapped.
   doubleTap,
 
-  /// Show tooltip only controller
+  /// Show tooltip only via controller. No automatic trigger from gestures.
   manual,
 }
 
+/// Defines how the tooltip is dismissed after being shown.
 enum WidgetTooltipDismissMode {
-  /// Dismiss when tap outside of tooltip
+  /// Dismiss tooltip when tapping outside of the tooltip area.
   tapOutside,
 
-  /// Dismiss when tap anywhere
+  /// Dismiss tooltip when tapping anywhere on the screen.
   tapAnyWhere,
 
-  /// Dismiss when tap inside of tooltip
+  /// Dismiss tooltip when tapping inside the tooltip area.
   tapInside,
 
-  /// Dismiss only controller
+  /// Dismiss tooltip only via controller. No automatic dismiss from gestures.
   manual,
 }
 
+/// A controller for managing the visibility state of a tooltip.
+///
+/// Use this controller to programmatically show, hide, or toggle the tooltip
+/// when [WidgetTooltip.triggerMode] or [WidgetTooltip.dismissMode] is set to
+/// [WidgetTooltipTriggerMode.manual] or [WidgetTooltipDismissMode.manual].
+///
+/// Example:
+/// ```dart
+/// final controller = TooltipController();
+///
+/// WidgetTooltip(
+///   controller: controller,
+///   triggerMode: WidgetTooltipTriggerMode.manual,
+///   message: Text('Hello'),
+///   child: IconButton(
+///     icon: Icon(Icons.info),
+///     onPressed: controller.show,
+///   ),
+/// )
+/// ```
 class TooltipController extends ChangeNotifier {
   bool _isShow = false;
 
+  /// Returns `true` if the tooltip is currently visible.
   bool get isShow => _isShow;
 
+  /// Shows the tooltip if it's currently hidden.
   void show() {
     _isShow = true;
     notifyListeners();
   }
 
+  /// Hides the tooltip if it's currently visible.
+  ///
+  /// The optional [event] parameter is provided for compatibility with
+  /// gesture callbacks but is not used.
   void dismiss([PointerDownEvent? event]) {
     _isShow = false;
-
     notifyListeners();
   }
 
+  /// Toggles the tooltip visibility.
+  ///
+  /// If the tooltip is currently shown, it will be dismissed.
+  /// If the tooltip is currently hidden, it will be shown.
   void toggle() => _isShow ? dismiss() : show();
 }
 
+/// A highly customizable tooltip widget for Flutter.
+///
+/// [WidgetTooltip] provides a rich tooltip experience with configurable
+/// trigger modes, dismiss behaviors, positioning, and styling options.
+///
+/// Example:
+/// ```dart
+/// WidgetTooltip(
+///   message: Text('This is a tooltip'),
+///   child: Icon(Icons.info),
+///   triggerMode: WidgetTooltipTriggerMode.tap,
+///   direction: WidgetTooltipDirection.top,
+/// )
+/// ```
 class WidgetTooltip extends StatefulWidget {
   const WidgetTooltip({
     super.key,
@@ -93,58 +139,83 @@ class WidgetTooltip extends StatefulWidget {
     this.direction,
   });
 
-  /// Message
+  /// The widget to display inside the tooltip.
+  ///
+  /// This can be any Flutter widget, not just text.
   final Widget message;
 
-  /// Target Widget
+  /// The target widget that triggers the tooltip.
   final Widget child;
 
-  /// Triangle color
+  /// The color of the tooltip's pointer triangle.
   final Color triangleColor;
 
-  /// Triangle size
+  /// The size of the tooltip's pointer triangle.
   final Size triangleSize;
 
-  /// Gap between target and tooltip
+  /// The gap between the target widget and the tooltip.
   final double targetPadding;
 
-  /// Triangle radius
+  /// The radius of the rounded corners on the triangle's tip.
   final double triangleRadius;
 
-  /// Show callback
+  /// Callback invoked when the tooltip is shown.
   final VoidCallback? onShow;
 
-  /// Dismiss callback
+  /// Callback invoked when the tooltip is dismissed.
   final VoidCallback? onDismiss;
 
-  /// Tooltip Controller
+  /// Optional controller for programmatic tooltip management.
+  ///
+  /// If provided, use this to show/hide the tooltip programmatically.
   final TooltipController? controller;
 
-  /// Message Box padding
+  /// Padding inside the tooltip message container.
   final EdgeInsetsGeometry messagePadding;
 
-  /// Message Box decoration
+  /// Decoration for the tooltip message container.
+  ///
+  /// Use this to customize background color, border radius, shadows, etc.
   final BoxDecoration messageDecoration;
 
-  /// Message Box text style
+  /// Text style applied to text widgets inside the message.
+  ///
+  /// This is a convenience property and only affects [Text] widgets.
   final TextStyle? messageStyle;
 
-  /// Message Box padding
+  /// Padding around the screen edges to prevent tooltip overflow.
+  ///
+  /// The tooltip will stay within these bounds.
   final EdgeInsetsGeometry padding;
 
-  /// Axis
+  /// The axis along which to position the tooltip.
+  ///
+  /// - [Axis.vertical]: Tooltip appears above or below the target.
+  /// - [Axis.horizontal]: Tooltip appears left or right of the target.
   final Axis axis;
 
-  /// Trigger mode
+  /// How the tooltip is triggered to show.
+  ///
+  /// Defaults to [WidgetTooltipTriggerMode.longPress] when no controller is provided.
+  /// When a controller is provided, defaults to [WidgetTooltipTriggerMode.manual].
   final WidgetTooltipTriggerMode? triggerMode;
 
-  /// dismiss mode
+  /// How the tooltip is dismissed after being shown.
+  ///
+  /// Defaults to [WidgetTooltipDismissMode.tapAnyWhere] when no controller is provided.
+  /// When a controller is provided, defaults to [WidgetTooltipDismissMode.manual].
   final WidgetTooltipDismissMode? dismissMode;
 
-  /// offset ignore
+  /// Whether to ignore automatic offset adjustment for edge detection.
+  ///
+  /// When `false` (default), the tooltip automatically adjusts its position
+  /// to stay within screen bounds. When `true`, the tooltip uses fixed positioning.
   final bool offsetIgnore;
 
-  /// tooltip direction
+  /// The preferred direction to display the tooltip.
+  ///
+  /// When `null`, the direction is automatically determined based on available space.
+  /// When specified, the tooltip will always appear in this direction.
   final WidgetTooltipDirection? direction;
 
   @override
@@ -397,7 +468,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
 
     if (renderBox == null) {
-      Exception('RenderBox is null');
+      debugPrint('WidgetTooltip: RenderBox is null, cannot calculate position');
       return null;
     }
 
