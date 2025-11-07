@@ -106,6 +106,27 @@ class _MyHomePageState extends State<MyHomePage> {
               message: Text('asdf', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
               child: const Text('tap outside'),
             ),
+            WidgetTooltip(
+              triggerMode: WidgetTooltipTriggerMode.tap,
+              dismissMode: WidgetTooltipDismissMode.tapAnyWhere,
+              messagePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              messageDecoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              message: Text(
+                'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white),
+              ),
+              child: const Text('Long text test'),
+            ),
           ],
         ),
       ),

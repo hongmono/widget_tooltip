@@ -245,13 +245,21 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   void show() {
     if (_animationController.isAnimating) return;
 
+    final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
+    final horizontalPadding = resolvedPadding.left + resolvedPadding.right;
+
     final Widget messageBox = Material(
       type: MaterialType.transparency,
-      child: Container(
-        key: messageBoxKey,
-        padding: widget.messagePadding,
-        decoration: widget.messageDecoration,
-        child: widget.message,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width - horizontalPadding,
+        ),
+        child: Container(
+          key: messageBoxKey,
+          padding: widget.messagePadding,
+          decoration: widget.messageDecoration,
+          child: widget.message,
+        ),
       ),
     );
 
