@@ -1,3 +1,6 @@
+## 1.1.4
+* *Bug fixed*: Fix right padding not working when text is long
+
 ## 1.1.3
 
 ### Features
