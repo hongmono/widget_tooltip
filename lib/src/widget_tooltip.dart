@@ -91,7 +91,10 @@ class WidgetTooltip extends StatefulWidget {
     this.dismissMode,
     this.offsetIgnore = false,
     this.direction,
-  });
+  })  : assert(targetPadding >= 0, 'targetPadding must be non-negative'),
+        assert(triangleRadius >= 0, 'triangleRadius must be non-negative'),
+        assert(triangleSize.width > 0, 'triangleSize width must be positive'),
+        assert(triangleSize.height > 0, 'triangleSize height must be positive');
 
   /// Message
   final Widget message;
@@ -159,8 +162,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   WidgetTooltipTriggerMode? _triggerMode;
   WidgetTooltipDismissMode? _dismissMode;
 
-  final key = GlobalKey();
-  final messageBoxKey = GlobalKey();
+  final key = GlobalKey<State<StatefulWidget>>();
+  final messageBoxKey = GlobalKey<State<StatefulWidget>>();
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
@@ -391,7 +394,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     widget.onShow?.call();
   }
 
-  void dismiss() async {
+  Future<void> dismiss() async {
     if (_overlayEntry != null) {
       await _animationController.reverse();
       _overlayEntry?.remove();
@@ -400,15 +403,25 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     }
   }
 
+  /// Calculates the optimal positioning for the tooltip based on the target widget's
+  /// position and the available screen space.
+  ///
+  /// This method performs intelligent edge detection and automatically adjusts
+  /// the tooltip position to ensure it stays within the viewport boundaries.
+  ///
+  /// Returns a record containing:
+  /// - targetAnchor: The anchor point on the target widget
+  /// - followerAnchor: The anchor point on the tooltip
+  /// - offset: Additional offset to prevent edge overflow
   ({Alignment targetAnchor, Alignment followerAnchor, Offset offset})? _builder(
       Size messageBoxSize) {
     final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
 
     if (renderBox == null) {
-      Exception('RenderBox is null');
-      return null;
+      throw Exception('RenderBox is null');
     }
 
+    // Calculate target widget metrics
     final targetSize = renderBox.size;
     final targetPosition = renderBox.localToGlobal(Offset.zero);
     final targetCenterPosition = Offset(
@@ -439,6 +452,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       _ => targetCenterPosition.dy <= MediaQuery.of(context).size.height / 2,
     };
 
+    // Determine anchor points based on axis and position
     Alignment targetAnchor = switch (widget.axis) {
       Axis.horizontal when isRight => Alignment.centerLeft,
       Axis.horizontal when isLeft => Alignment.centerRight,
@@ -454,6 +468,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       Axis.vertical when isBottom => Alignment.bottomCenter,
       _ => Alignment.center,
     };
+
+    // Calculate horizontal overflow and edge distances
     final double overflowWidth = (messageBoxSize.width - targetSize.width) / 2;
 
     final edgeFromLeft = targetPosition.dx - overflowWidth;
@@ -461,6 +477,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         (targetPosition.dx + targetSize.width + overflowWidth);
     final edgeFromHorizontal = min(edgeFromLeft, edgeFromRight);
 
+    // Adjust horizontal position to prevent edge overflow
     double dx = 0;
 
     if (edgeFromHorizontal < widget.padding.horizontal / 2) {
@@ -471,6 +488,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       }
     }
 
+    // Calculate vertical overflow and edge distances
     final double overflowHeight =
         (messageBoxSize.height - targetSize.height) / 2;
 
@@ -479,6 +497,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         (targetPosition.dy + targetSize.height + overflowHeight);
     final edgeFromVertical = min(edgeFromTop, edgeFromBottom);
 
+    // Adjust vertical position to prevent edge overflow
     double dy = 0;
 
     if (edgeFromVertical < widget.padding.vertical / 2) {

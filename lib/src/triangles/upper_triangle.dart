@@ -40,21 +40,29 @@ class UpperTrianglePainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..strokeCap = StrokeCap.round;
 
+    // Calculate triangle dimensions
+    // a: half-width of the triangle base
+    // b: height of the triangle
+    // r: corner radius for rounded edges
     double a = size.width / 2;
     double b = size.height;
     double r = triangleRadius;
 
+    // Mathematical formulas for rounded triangle corners
+    // p: horizontal offset for arc positioning
+    // q: vertical offset for arc positioning
     double p = (b * r) / sqrt(b * b + a * a);
     double q =
         -(b * b * sqrt(b * b + a * a) * r - a * b * b * b - a * a * a * b) /
             (a * b * b + a * a * a);
 
+    // Draw the triangle path with rounded tip
     final path = Path();
-    path.moveTo(a + a, size.height); // 오른쪽 아래
-    path.lineTo(a + p, size.height - q);
+    path.moveTo(a + a, size.height); // Right corner (bottom-right)
+    path.lineTo(a + p, size.height - q); // Right side to arc
     path.arcToPoint(Offset(a - p, size.height - q),
-        radius: Radius.circular(r), clockwise: false);
-    path.lineTo(0, size.height); // 왼쪽 아래
+        radius: Radius.circular(r), clockwise: false); // Rounded tip
+    path.lineTo(0, size.height); // Left side (bottom-left)
     path.close();
 
     canvas.drawPath(path, paint);

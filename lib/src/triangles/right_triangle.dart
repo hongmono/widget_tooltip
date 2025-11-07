@@ -1,3 +1,5 @@
+import 'dart:math' show pi;
+
 import 'package:flutter/material.dart';
 import 'package:widget_tooltip/src/triangles/upper_triangle.dart';
 
@@ -14,7 +16,7 @@ class RightTriangle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.rotate(
-      angle: 90 * 3.14 / 180,
+      angle: pi / 2,
       child: CustomPaint(
         painter: UpperTrianglePainter(
           backgroundColor: backgroundColor,
