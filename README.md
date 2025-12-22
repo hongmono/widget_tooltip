@@ -10,28 +10,43 @@ A highly customizable tooltip widget for Flutter applications that provides rich
 ## Features
 
 - 🎯 **Multiple Trigger Modes**
+
   - Tap
   - Long Press
   - Double Tap
   - Manual Control
 
 - 🎨 **Customizable Appearance**
+
   - Custom Colors
   - Adjustable Size
   - Flexible Styling
   - Custom Decorations
 
 - 📍 **Smart Positioning**
+
   - Automatic Edge Detection
   - Multiple Directions (Top, Bottom, Left, Right)
   - Customizable Padding and Offset
   - Axis Control (Vertical/Horizontal)
 
 - 🎮 **Flexible Control**
+
   - Built-in Controller
   - Show/Hide Callbacks
   - Custom Dismiss Behaviors
   - Event Handling
+
+- 🎬 **Animation Types**
+
+  - Fade (default)
+  - Scale
+  - Scale & Fade
+  - No Animation
+
+- ⏱️ **Auto Dismiss**
+  - Configurable Auto-dismiss Duration
+  - Custom Animation Duration
 
 ## Installation
 
@@ -39,7 +54,7 @@ Add Widget Tooltip to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  widget_tooltip: ^1.0.0  # Replace with the latest version
+  widget_tooltip: ^1.0.0 # Replace with the latest version
 ```
 
 Or run:
@@ -59,6 +74,16 @@ WidgetTooltip(
   child: Icon(Icons.info),
 )
 
+// With animation and auto-dismiss
+WidgetTooltip(
+  message: Text('I will disappear in 3 seconds!'),
+  child: Icon(Icons.help),
+  triggerMode: WidgetTooltipTriggerMode.tap,
+  animation: WidgetTooltipAnimation.scaleAndFade,
+  autoDismissDuration: Duration(seconds: 3),
+  animationDuration: Duration(milliseconds: 200),
+)
+
 // Customized tooltip
 WidgetTooltip(
   message: Text(
@@ -68,6 +93,7 @@ WidgetTooltip(
   child: Icon(Icons.help),
   triggerMode: WidgetTooltipTriggerMode.tap,
   direction: WidgetTooltipDirection.top,
+  animation: WidgetTooltipAnimation.scale,
   messageDecoration: BoxDecoration(
     color: Colors.blue,
     borderRadius: BorderRadius.circular(8),
