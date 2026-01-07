@@ -57,7 +57,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Text(
                       'asdf',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(color: Colors.white),
                     ),
                     IconButton(
                       onPressed: _tooltipController.dismiss,
@@ -78,7 +81,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   message: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('test', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
+                      Text('test',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(color: Colors.white)),
                       const FlutterLogo(),
                       Container(
                         width: 40,
@@ -94,7 +101,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 WidgetTooltip(
                   triggerMode: WidgetTooltipTriggerMode.tap,
                   dismissMode: WidgetTooltipDismissMode.tapInside,
-                  message: Container(width: 200, height: 200, color: Colors.deepPurple, child: Text('asdf', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white))),
+                  message: Container(
+                      width: 200,
+                      height: 200,
+                      color: Colors.deepPurple,
+                      child: Text('asdf',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(color: Colors.white))),
                   padding: const EdgeInsets.all(48),
                   child: const Text('tap inside'),
                 ),
@@ -103,19 +118,24 @@ class _MyHomePageState extends State<MyHomePage> {
             WidgetTooltip(
               triggerMode: WidgetTooltipTriggerMode.tap,
               dismissMode: WidgetTooltipDismissMode.tapOutside,
-              message: Text('asdf', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
+              message: Text('asdf',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(color: Colors.white)),
               child: const Text('tap outside'),
             ),
             WidgetTooltip(
               triggerMode: WidgetTooltipTriggerMode.tap,
               dismissMode: WidgetTooltipDismissMode.tapAnyWhere,
-              messagePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              messagePadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               messageDecoration: BoxDecoration(
                 color: Colors.blue,
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -123,7 +143,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               message: Text(
                 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.white),
               ),
               child: const Text('Long text test'),
             ),

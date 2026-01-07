@@ -2,10 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:widget_tooltip/src/triangles/down_triangle.dart';
-import 'package:widget_tooltip/src/triangles/left_triangle.dart';
-import 'package:widget_tooltip/src/triangles/right_triangle.dart';
-import 'package:widget_tooltip/src/triangles/upper_triangle.dart';
+import 'package:widget_tooltip/src/triangles/tooltip_triangle.dart';
 
 enum WidgetTooltipDirection {
   /// Top
@@ -376,26 +373,22 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       }
     }
 
-    // Determine triangle widget based on position
-    final Widget triangle = switch (widget.axis) {
-      Axis.vertical when isTop => UpperTriangle(
-          backgroundColor: widget.triangleColor,
-          triangleRadius: widget.triangleRadius,
-        ),
-      Axis.vertical when isBottom => DownTriangle(
-          backgroundColor: widget.triangleColor,
-          triangleRadius: widget.triangleRadius,
-        ),
-      Axis.horizontal when isLeft => LeftTriangle(
-          backgroundColor: widget.triangleColor,
-          triangleRadius: widget.triangleRadius,
-        ),
-      Axis.horizontal when isRight => RightTriangle(
-          backgroundColor: widget.triangleColor,
-          triangleRadius: widget.triangleRadius,
-        ),
-      _ => const SizedBox.shrink(),
+    // Determine triangle direction based on position
+    final AxisDirection? triangleDirection = switch (widget.axis) {
+      Axis.vertical when isTop => AxisDirection.up,
+      Axis.vertical when isBottom => AxisDirection.down,
+      Axis.horizontal when isLeft => AxisDirection.left,
+      Axis.horizontal when isRight => AxisDirection.right,
+      _ => null,
     };
+
+    final Widget triangle = triangleDirection != null
+        ? TooltipTriangle(
+            direction: triangleDirection,
+            color: widget.triangleColor,
+            radius: widget.triangleRadius,
+          )
+        : const SizedBox.shrink();
 
     // Calculate offsets for tooltip and triangle
     final Offset tooltipOffset;
@@ -658,10 +651,14 @@ class _TooltipOverlayState extends State<_TooltipOverlay> {
             constraints: BoxConstraints(
               maxWidth: widget.maxWidth,
             ),
-            child: Container(
-              padding: widget.messagePadding,
-              decoration: widget.messageDecoration,
-              child: widget.message,
+            child: Semantics(
+              container: true,
+              liveRegion: true,
+              child: Container(
+                padding: widget.messagePadding,
+                decoration: widget.messageDecoration,
+                child: widget.message,
+              ),
             ),
           ),
         ),
