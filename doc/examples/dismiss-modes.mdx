@@ -9,7 +9,7 @@ The `WidgetTooltipDismissMode` enum defines four dismiss modes:
 ```dart
 enum WidgetTooltipDismissMode {
   tapOutside,  // Dismiss when tapping outside tooltip
-  tapAnyWhere, // Dismiss when tapping anywhere (default)
+  tapAnywhere, // Dismiss when tapping anywhere (default)
   tapInside,   // Dismiss when tapping inside tooltip
   manual       // Dismiss only through controller
 }
@@ -37,7 +37,7 @@ Dismiss the tooltip when tapping anywhere on the screen:
 WidgetTooltip(
   message: Text('Tap anywhere to dismiss'),
   child: Icon(Icons.info_outline),
-  // dismissMode defaults to tapAnyWhere if not specified
+  // dismissMode defaults to tapAnywhere if not specified
 )
 ```
 
@@ -159,7 +159,7 @@ class MultiDismissExample extends StatelessWidget {
             WidgetTooltip(
               message: Text('Tap anywhere'),
               child: Icon(Icons.touch_app_outlined),
-              dismissMode: WidgetTooltipDismissMode.tapAnyWhere,
+              dismissMode: WidgetTooltipDismissMode.tapAnywhere,
             ),
             Text('Anywhere'),
           ],
@@ -184,7 +184,7 @@ class MultiDismissExample extends StatelessWidget {
 
 1. **Choose Appropriate Dismiss Modes**
    - Use `tapOutside` for modal-like behavior
-   - Use `tapAnyWhere` for quick information
+   - Use `tapAnywhere` for quick information
    - Use `tapInside` for interactive tooltips
    - Use `manual` for complex interaction flows
 
@@ -212,7 +212,7 @@ class MultiDismissExample extends StatelessWidget {
      message: Text('Quick info'),
      child: Icon(Icons.info),
      triggerMode: WidgetTooltipTriggerMode.tap,
-     dismissMode: WidgetTooltipDismissMode.tapAnyWhere,
+     dismissMode: WidgetTooltipDismissMode.tapAnywhere,
    )
    ```
 

@@ -28,6 +28,9 @@ enum WidgetTooltipTriggerMode {
   /// Show tooltip when double tap
   doubleTap,
 
+  /// Show tooltip on mouse hover (Desktop/Web)
+  hover,
+
   /// Show tooltip only controller
   manual,
 }
@@ -37,6 +40,10 @@ enum WidgetTooltipDismissMode {
   tapOutside,
 
   /// Dismiss when tap anywhere
+  tapAnywhere,
+
+  /// Dismiss when tap anywhere
+  @Deprecated('Use tapAnywhere instead')
   tapAnyWhere,
 
   /// Dismiss when tap inside of tooltip
@@ -60,24 +67,94 @@ enum WidgetTooltipAnimation {
   none,
 }
 
+/// A controller for programmatically showing and hiding a [WidgetTooltip].
+///
+/// This controller can be passed to [WidgetTooltip.controller] to enable
+/// manual control over the tooltip's visibility.
+///
+/// Example:
+/// ```dart
+/// final controller = TooltipController();
+///
+/// WidgetTooltip(
+///   controller: controller,
+///   message: Text('Hello'),
+///   child: Icon(Icons.info),
+/// )
+///
+/// // Show tooltip programmatically
+/// controller.show();
+///
+/// // Hide tooltip programmatically
+/// controller.dismiss();
+/// ```
 class TooltipController extends ChangeNotifier {
   bool _isShow = false;
 
+  /// Whether the tooltip is currently visible.
   bool get isShow => _isShow;
 
+  /// Shows the tooltip.
+  ///
+  /// Notifies listeners when the visibility changes.
   void show() {
     _isShow = true;
     notifyListeners();
   }
 
+  /// Dismisses the tooltip.
+  ///
+  /// The optional [event] parameter is ignored but allows this method
+  /// to be used directly as a callback for tap events.
+  ///
+  /// Notifies listeners when the visibility changes.
   void dismiss([PointerDownEvent? event]) {
     _isShow = false;
     notifyListeners();
   }
 
+  /// Toggles the tooltip visibility.
+  ///
+  /// Shows the tooltip if it's hidden, hides it if it's visible.
   void toggle() => _isShow ? dismiss() : show();
 }
 
+/// A highly customizable tooltip widget that displays a message when triggered.
+///
+/// [WidgetTooltip] provides rich customization options including:
+/// - Multiple trigger modes (tap, long press, double tap, hover, manual)
+/// - Various dismiss behaviors (tap outside, tap anywhere, tap inside, manual)
+/// - Smart positioning with automatic direction flipping when space is limited
+/// - Customizable animations (fade, scale, scaleAndFade, none)
+/// - Triangle indicator with adjustable size, color, and corner radius
+///
+/// Example:
+/// ```dart
+/// WidgetTooltip(
+///   message: Text('This is a tooltip'),
+///   triggerMode: WidgetTooltipTriggerMode.tap,
+///   child: Icon(Icons.info),
+/// )
+/// ```
+///
+/// For programmatic control, use [TooltipController]:
+/// ```dart
+/// final controller = TooltipController();
+///
+/// WidgetTooltip(
+///   controller: controller,
+///   triggerMode: WidgetTooltipTriggerMode.manual,
+///   message: Text('Controlled tooltip'),
+///   child: Icon(Icons.info),
+/// )
+/// ```
+///
+/// See also:
+/// - [TooltipController] for programmatic control
+/// - [WidgetTooltipTriggerMode] for trigger options
+/// - [WidgetTooltipDismissMode] for dismiss behavior options
+/// - [WidgetTooltipDirection] for positioning options
+/// - [WidgetTooltipAnimation] for animation options
 class WidgetTooltip extends StatefulWidget {
   const WidgetTooltip({
     super.key,
@@ -95,7 +172,6 @@ class WidgetTooltip extends StatefulWidget {
     this.messageDecoration = const BoxDecoration(
         color: Colors.black,
         borderRadius: BorderRadius.all(Radius.circular(8))),
-    this.messageStyle = const TextStyle(color: Colors.white, fontSize: 14),
     this.padding = const EdgeInsets.all(16),
     this.axis = Axis.vertical,
     this.triggerMode,
@@ -105,6 +181,7 @@ class WidgetTooltip extends StatefulWidget {
     this.animation = WidgetTooltipAnimation.fade,
     this.autoDismissDuration,
     this.animationDuration = const Duration(milliseconds: 300),
+    this.autoFlip = true,
   });
 
   /// Message widget displayed in tooltip
@@ -140,9 +217,6 @@ class WidgetTooltip extends StatefulWidget {
   /// Decoration for the message box
   final BoxDecoration messageDecoration;
 
-  /// Text style for the message (used when message is Text widget)
-  final TextStyle? messageStyle;
-
   /// Screen edge padding for tooltip positioning
   final EdgeInsetsGeometry padding;
 
@@ -169,6 +243,18 @@ class WidgetTooltip extends StatefulWidget {
 
   /// Animation duration
   final Duration animationDuration;
+
+  /// Whether to automatically position tooltip based on screen center.
+  ///
+  /// When true (default), the tooltip position is determined by where the target
+  /// is on screen:
+  /// - Target in top half → tooltip appears below
+  /// - Target in bottom half → tooltip appears above
+  /// - Target in left half → tooltip appears to the right
+  /// - Target in right half → tooltip appears to the left
+  ///
+  /// When false, the [direction] property is used to fix the tooltip position.
+  final bool autoFlip;
 
   @override
   State<WidgetTooltip> createState() => _WidgetTooltipState();
@@ -244,7 +330,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     };
 
     _dismissMode = switch (widget.controller) {
-      null => widget.dismissMode ?? WidgetTooltipDismissMode.tapAnyWhere,
+      null => widget.dismissMode ?? WidgetTooltipDismissMode.tapAnywhere,
       _ => widget.dismissMode,
     };
   }
@@ -288,6 +374,17 @@ class _WidgetTooltipState extends State<WidgetTooltip>
 
   @override
   Widget build(BuildContext context) {
+    Widget child = SizedBox(key: _targetKey, child: widget.child);
+
+    // Wrap with MouseRegion for hover support
+    if (_triggerMode == WidgetTooltipTriggerMode.hover) {
+      child = MouseRegion(
+        onEnter: (_) => _controller.show(),
+        onExit: (_) => _controller.dismiss(),
+        child: child,
+      );
+    }
+
     return CompositedTransformTarget(
       link: _layerLink,
       child: GestureDetector(
@@ -303,7 +400,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
           WidgetTooltipTriggerMode.doubleTap => _controller.toggle,
           _ => null,
         },
-        child: SizedBox(key: _targetKey, child: widget.child),
+        child: child,
       ),
     );
   }
@@ -326,59 +423,66 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       targetPosition.dy + targetSize.height / 2,
     );
 
-    // Determine position flags based on direction or screen position
-    final bool isBottom = switch (widget.direction) {
-      WidgetTooltipDirection.top => true,
-      WidgetTooltipDirection.bottom => false,
-      _ => targetCenterPosition.dy > screenSize.height / 2,
-    };
+    // Determine tooltip position relative to target
+    // Simple rule: if target is in top half of screen, show tooltip below; otherwise above
+    // autoFlip: true (default) = use screen center logic, ignore direction
+    // autoFlip: false = use explicit direction setting
+    final bool showTooltipAbove;
+    final bool showTooltipLeft;
 
-    final bool isTop = switch (widget.direction) {
-      WidgetTooltipDirection.top => false,
-      WidgetTooltipDirection.bottom => true,
-      _ => targetCenterPosition.dy <= screenSize.height / 2,
-    };
+    if (widget.autoFlip) {
+      // Auto position based on screen center
+      showTooltipAbove = targetCenterPosition.dy > screenSize.height / 2;
+      showTooltipLeft = targetCenterPosition.dx > screenSize.width / 2;
+    } else {
+      // Use explicit direction or fallback to screen center
+      showTooltipAbove = switch (widget.direction) {
+        WidgetTooltipDirection.top => true,
+        WidgetTooltipDirection.bottom => false,
+        _ => targetCenterPosition.dy > screenSize.height / 2,
+      };
+      showTooltipLeft = switch (widget.direction) {
+        WidgetTooltipDirection.left => true,
+        WidgetTooltipDirection.right => false,
+        _ => targetCenterPosition.dx > screenSize.width / 2,
+      };
+    }
 
-    final bool isLeft = switch (widget.direction) {
-      WidgetTooltipDirection.left => false,
-      WidgetTooltipDirection.right => true,
-      _ => targetCenterPosition.dx <= screenSize.width / 2,
-    };
+    final bool showTooltipBelow = !showTooltipAbove;
+    final bool showTooltipRight = !showTooltipLeft;
 
-    final bool isRight = switch (widget.direction) {
-      WidgetTooltipDirection.left => true,
-      WidgetTooltipDirection.right => false,
-      _ => targetCenterPosition.dx > screenSize.width / 2,
-    };
-
-    // Determine anchor alignments based on position
+    // Determine anchor alignments based on tooltip position
     final Alignment targetAnchor;
     final Alignment followerAnchor;
 
     if (widget.axis == Axis.vertical) {
-      if (isTop) {
-        targetAnchor = Alignment.bottomCenter;
-        followerAnchor = Alignment.topCenter;
-      } else {
+      if (showTooltipAbove) {
+        // Tooltip above target: connect target's top to follower's bottom
         targetAnchor = Alignment.topCenter;
         followerAnchor = Alignment.bottomCenter;
+      } else {
+        // Tooltip below target: connect target's bottom to follower's top
+        targetAnchor = Alignment.bottomCenter;
+        followerAnchor = Alignment.topCenter;
       }
     } else {
-      if (isLeft) {
-        targetAnchor = Alignment.centerRight;
-        followerAnchor = Alignment.centerLeft;
-      } else {
+      if (showTooltipLeft) {
+        // Tooltip left of target: connect target's left to follower's right
         targetAnchor = Alignment.centerLeft;
         followerAnchor = Alignment.centerRight;
+      } else {
+        // Tooltip right of target: connect target's right to follower's left
+        targetAnchor = Alignment.centerRight;
+        followerAnchor = Alignment.centerLeft;
       }
     }
 
-    // Determine triangle direction based on position
+    // Determine triangle direction (points toward the target)
     final AxisDirection? triangleDirection = switch (widget.axis) {
-      Axis.vertical when isTop => AxisDirection.up,
-      Axis.vertical when isBottom => AxisDirection.down,
-      Axis.horizontal when isLeft => AxisDirection.left,
-      Axis.horizontal when isRight => AxisDirection.right,
+      Axis.vertical when showTooltipAbove => AxisDirection.down,
+      Axis.vertical when showTooltipBelow => AxisDirection.up,
+      Axis.horizontal when showTooltipLeft => AxisDirection.right,
+      Axis.horizontal when showTooltipRight => AxisDirection.left,
       _ => null,
     };
 
@@ -396,43 +500,48 @@ class _WidgetTooltipState extends State<WidgetTooltip>
 
     if (widget.axis == Axis.vertical) {
       final gap = widget.targetPadding + widget.triangleSize.height - 1;
-      if (isTop) {
+      if (showTooltipAbove) {
+        // Tooltip above target
+        tooltipOffset = Offset(0, -gap);
+        triangleOffset = Offset(0, -widget.targetPadding);
+      } else {
         // Tooltip below target
         tooltipOffset = Offset(0, gap);
         triangleOffset = Offset(0, widget.targetPadding);
-      } else {
-        // Tooltip above target
-        tooltipOffset = Offset(0, -gap);
-        triangleOffset = Offset(
-            0, -widget.targetPadding); // NOT including triangleSize.height
       }
     } else {
       final gap = widget.targetPadding + widget.triangleSize.width - 1;
-      if (isLeft) {
+      if (showTooltipLeft) {
+        // Tooltip to the left of target
+        tooltipOffset = Offset(-gap, 0);
+        triangleOffset = Offset(-widget.targetPadding, 0);
+      } else {
         // Tooltip to the right of target
         tooltipOffset = Offset(gap, 0);
         triangleOffset = Offset(widget.targetPadding, 0);
-      } else {
-        // Tooltip to the left of target
-        tooltipOffset = Offset(-gap, 0);
-        triangleOffset = Offset(
-            -widget.targetPadding, 0); // NOT including triangleSize.width
       }
     }
 
     // Calculate scale alignment based on tooltip position relative to target
     final Alignment scaleAlignment = switch (widget.axis) {
-      Axis.vertical when isTop => Alignment.topCenter,
-      Axis.vertical when isBottom => Alignment.bottomCenter,
-      Axis.horizontal when isLeft => Alignment.centerLeft,
-      Axis.horizontal when isRight => Alignment.centerRight,
+      Axis.vertical when showTooltipAbove => Alignment.bottomCenter,
+      Axis.vertical when showTooltipBelow => Alignment.topCenter,
+      Axis.horizontal when showTooltipLeft => Alignment.centerRight,
+      Axis.horizontal when showTooltipRight => Alignment.centerLeft,
       _ => Alignment.center,
     };
 
     // Calculate maxWidth for tooltip
     double maxWidth = screenSize.width - resolvedPadding.horizontal;
     if (widget.axis == Axis.horizontal) {
-      if (isLeft) {
+      if (showTooltipLeft) {
+        maxWidth = min(
+            maxWidth,
+            targetPosition.dx -
+                widget.targetPadding -
+                widget.triangleSize.width -
+                resolvedPadding.left);
+      } else {
         maxWidth = min(
             maxWidth,
             screenSize.width -
@@ -441,13 +550,6 @@ class _WidgetTooltipState extends State<WidgetTooltip>
                 widget.targetPadding -
                 widget.triangleSize.width -
                 resolvedPadding.right);
-      } else {
-        maxWidth = min(
-            maxWidth,
-            targetPosition.dx -
-                widget.targetPadding -
-                widget.triangleSize.width -
-                resolvedPadding.left);
       }
     }
     maxWidth = max(100, maxWidth);
@@ -459,22 +561,45 @@ class _WidgetTooltipState extends State<WidgetTooltip>
             _targetKey.currentContext?.findRenderObject() as RenderBox?;
         if (currentTargetRenderBox == null ||
             !currentTargetRenderBox.attached) {
+          // Target is no longer in the widget tree, dismiss tooltip
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _controller.dismiss();
+          });
           return const SizedBox.shrink();
         }
 
         final currentTargetPosition =
             currentTargetRenderBox.localToGlobal(Offset.zero);
+
+        // Check if target is visible on screen
+        final isTargetVisible = currentTargetPosition.dy > -targetSize.height &&
+            currentTargetPosition.dy < screenSize.height &&
+            currentTargetPosition.dx > -targetSize.width &&
+            currentTargetPosition.dx < screenSize.width;
+
+        if (!isTargetVisible) {
+          // Target is off-screen, dismiss tooltip
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _controller.dismiss();
+          });
+          return const SizedBox.shrink();
+        }
+
         final currentTargetCenter =
             currentTargetPosition.dx + targetSize.width / 2;
 
         return TapRegion(
           onTapInside: switch (_dismissMode) {
             WidgetTooltipDismissMode.tapInside => _controller.dismiss,
+            WidgetTooltipDismissMode.tapAnywhere => _controller.dismiss,
+            // ignore: deprecated_member_use_from_same_package
             WidgetTooltipDismissMode.tapAnyWhere => _controller.dismiss,
             _ => null,
           },
           onTapOutside: switch (_dismissMode) {
             WidgetTooltipDismissMode.tapOutside => _controller.dismiss,
+            WidgetTooltipDismissMode.tapAnywhere => _controller.dismiss,
+            // ignore: deprecated_member_use_from_same_package
             WidgetTooltipDismissMode.tapAnyWhere => _controller.dismiss,
             _ => null,
           },
@@ -497,8 +622,6 @@ class _WidgetTooltipState extends State<WidgetTooltip>
                         targetCenterX: currentTargetCenter,
                         axis: widget.axis,
                         offsetIgnore: widget.offsetIgnore,
-                        isLeft: isLeft,
-                        isRight: isRight,
                         messagePadding: widget.messagePadding,
                         messageDecoration: widget.messageDecoration,
                         message: widget.message,
@@ -563,8 +686,6 @@ class _TooltipOverlay extends StatefulWidget {
     required this.targetCenterX,
     required this.axis,
     required this.offsetIgnore,
-    required this.isLeft,
-    required this.isRight,
     required this.messagePadding,
     required this.messageDecoration,
     required this.message,
@@ -577,8 +698,6 @@ class _TooltipOverlay extends StatefulWidget {
   final double targetCenterX;
   final Axis axis;
   final bool offsetIgnore;
-  final bool isLeft;
-  final bool isRight;
   final EdgeInsetsGeometry messagePadding;
   final BoxDecoration messageDecoration;
   final Widget message;

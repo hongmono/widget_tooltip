@@ -196,7 +196,7 @@ void main() {
     });
 
     group('DismissMode', () {
-      testWidgets('tapAnyWhere dismisses on tap inside',
+      testWidgets('tapAnywhere dismisses on tap inside',
           (WidgetTester tester) async {
         await tester.pumpWidget(
           const MaterialApp(
@@ -205,7 +205,7 @@ void main() {
                 child: WidgetTooltip(
                   message: Text('Tooltip message'),
                   triggerMode: WidgetTooltipTriggerMode.tap,
-                  dismissMode: WidgetTooltipDismissMode.tapAnyWhere,
+                  dismissMode: WidgetTooltipDismissMode.tapAnywhere,
                   child: Text('Target'),
                 ),
               ),
@@ -430,7 +430,7 @@ void main() {
                 child: WidgetTooltip(
                   message: const Text('Tooltip message'),
                   triggerMode: WidgetTooltipTriggerMode.tap,
-                  dismissMode: WidgetTooltipDismissMode.tapAnyWhere,
+                  dismissMode: WidgetTooltipDismissMode.tapAnywhere,
                   onDismiss: () => dismissCalled = true,
                   child: const Text('Target'),
                 ),
