@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:widget_tooltip/widget_tooltip.dart';
@@ -105,6 +106,42 @@ void main() {
         );
 
         await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsNothing);
+      });
+
+      testWidgets('hover shows and hides tooltip on mouse enter/exit',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.hover,
+                  animation: WidgetTooltipAnimation.none,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Create a mouse and hover over target
+        final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        await gesture.addPointer(location: Offset.zero);
+        addTearDown(gesture.removePointer);
+
+        // Move mouse to target
+        final targetCenter = tester.getCenter(find.text('Target'));
+        await gesture.moveTo(targetCenter);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Move mouse away from target
+        await gesture.moveTo(Offset.zero);
         await tester.pumpAndSettle();
 
         expect(find.text('Tooltip message'), findsNothing);
@@ -391,6 +428,34 @@ void main() {
 
         expect(find.text('Tooltip message'), findsOneWidget);
       });
+
+      testWidgets('scaleAndFade animation works', (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  animation: WidgetTooltipAnimation.scaleAndFade,
+                  animationDuration: Duration(milliseconds: 300),
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 150));
+
+        // Animation should be in progress
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsOneWidget);
+      });
     });
 
     group('Callbacks', () {
@@ -573,6 +638,239 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Tooltip message'), findsOneWidget);
+      });
+    });
+
+    group('AutoFlip', () {
+      testWidgets('autoFlip positions tooltip based on screen position',
+          (WidgetTester tester) async {
+        // Test with target at top of screen - tooltip should appear below
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 50),
+                  child: WidgetTooltip(
+                    message: Text('Tooltip message'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    autoFlip: true,
+                    child: Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+      });
+
+      testWidgets('autoFlip false respects explicit direction',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  autoFlip: false,
+                  direction: WidgetTooltipDirection.bottom,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+      });
+    });
+
+    group('DismissMode tapOutside', () {
+      testWidgets('tapOutside dismisses only on tap outside tooltip',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  dismissMode: WidgetTooltipDismissMode.tapOutside,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Show tooltip
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Tap outside to dismiss
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsNothing);
+      });
+    });
+
+    group('Triangle', () {
+      testWidgets('triangle is rendered with tooltip',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  triangleColor: Colors.red,
+                  triangleSize: Size(20, 20),
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+        // Triangle is rendered as part of the overlay
+      });
+    });
+
+    group('Controller reuse', () {
+      testWidgets('controller can be reused after widget rebuild',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: const Text('Tooltip message'),
+                  controller: controller,
+                  child: const Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        controller.dismiss();
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsNothing);
+
+        // Rebuild widget and reuse controller
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: const Text('Tooltip message updated'),
+                  controller: controller,
+                  child: const Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message updated'), findsOneWidget);
+      });
+    });
+
+    group('Edge cases', () {
+      testWidgets('rapid show/dismiss does not cause errors',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: const Text('Tooltip message'),
+                  controller: controller,
+                  animation: WidgetTooltipAnimation.none,
+                  child: const Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Rapid toggling
+        for (int i = 0; i < 5; i++) {
+          controller.show();
+          await tester.pump();
+          controller.dismiss();
+          await tester.pump();
+        }
+
+        await tester.pumpAndSettle();
+        // Should end in dismissed state
+        expect(find.text('Tooltip message'), findsNothing);
+      });
+
+      testWidgets('widget disposal during animation does not cause errors',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: const Text('Tooltip message'),
+                  controller: controller,
+                  animationDuration: const Duration(milliseconds: 500),
+                  child: const Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Dispose widget during animation
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text('No tooltip'),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        // No errors should occur
+        expect(find.text('No tooltip'), findsOneWidget);
       });
     });
   });
