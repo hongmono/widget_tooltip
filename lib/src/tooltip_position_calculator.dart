@@ -13,7 +13,6 @@ class TooltipLayoutData {
     required this.targetAnchor,
     required this.followerAnchor,
     required this.tooltipOffset,
-    required this.triangleOffset,
     required this.scaleAlignment,
     required this.triangleDirection,
     required this.maxWidth,
@@ -24,7 +23,6 @@ class TooltipLayoutData {
   final Alignment targetAnchor;
   final Alignment followerAnchor;
   final Offset tooltipOffset;
-  final Offset triangleOffset;
   final Alignment scaleAlignment;
   final AxisDirection triangleDirection;
   final double maxWidth;
@@ -67,7 +65,7 @@ class TooltipPositionCalculator {
       showLeft: position.showLeft,
     );
 
-    final offsets = _calculateOffsets(
+    final tooltipOffset = _calculateTooltipOffset(
       showAbove: position.showAbove,
       showLeft: position.showLeft,
     );
@@ -77,8 +75,7 @@ class TooltipPositionCalculator {
       showLeft: position.showLeft,
       targetAnchor: anchors.targetAnchor,
       followerAnchor: anchors.followerAnchor,
-      tooltipOffset: offsets.tooltipOffset,
-      triangleOffset: offsets.triangleOffset,
+      tooltipOffset: tooltipOffset,
       scaleAlignment: _calculateScaleAlignment(
         showAbove: position.showAbove,
         showLeft: position.showLeft,
@@ -155,39 +152,17 @@ class TooltipPositionCalculator {
     }
   }
 
-  /// Calculates offsets for tooltip and triangle positioning.
-  ({Offset tooltipOffset, Offset triangleOffset}) _calculateOffsets({
+  /// Calculates offset for tooltip positioning.
+  Offset _calculateTooltipOffset({
     required bool showAbove,
     required bool showLeft,
   }) {
     if (axis == Axis.vertical) {
-      final gap =
-          targetPadding + triangleSize.height - kTriangleOverlapOffset;
-      if (showAbove) {
-        return (
-          tooltipOffset: Offset(0, -gap),
-          triangleOffset: Offset(0, -targetPadding),
-        );
-      } else {
-        return (
-          tooltipOffset: Offset(0, gap),
-          triangleOffset: Offset(0, targetPadding),
-        );
-      }
+      final gap = targetPadding;
+      return showAbove ? Offset(0, -gap) : Offset(0, gap);
     } else {
-      final gap =
-          targetPadding + triangleSize.width - kTriangleOverlapOffset;
-      if (showLeft) {
-        return (
-          tooltipOffset: Offset(-gap, 0),
-          triangleOffset: Offset(-targetPadding, 0),
-        );
-      } else {
-        return (
-          tooltipOffset: Offset(gap, 0),
-          triangleOffset: Offset(targetPadding, 0),
-        );
-      }
+      final gap = targetPadding;
+      return showLeft ? Offset(-gap, 0) : Offset(gap, 0);
     }
   }
 

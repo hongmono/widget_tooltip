@@ -374,8 +374,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       return const SizedBox.shrink();
     }
 
-    final currentTargetCenter =
-        currentTargetPosition.dx + targetSize.width / 2;
+    final currentTargetCenter = currentTargetPosition.dx + targetSize.width / 2;
 
     final animationBuilder = TooltipAnimationBuilder(
       animation: widget.animation,
@@ -385,51 +384,69 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     return TapRegion(
       onTapInside: _shouldDismissOnTapInside() ? _controller.dismiss : null,
       onTapOutside: _shouldDismissOnTapOutside() ? _controller.dismiss : null,
-      child: Stack(
-        children: [
-          CompositedTransformFollower(
-            link: _layerLink,
-            targetAnchor: layout.targetAnchor,
-            followerAnchor: layout.followerAnchor,
-            offset: layout.tooltipOffset,
-            child: animationBuilder.build(
-              scaleAlignment: layout.scaleAlignment,
-              child: Builder(
-                builder: (_) => TooltipOverlay(
-                  messageKey: _messageKey,
-                  maxWidth: layout.maxWidth,
-                  screenSize: screenSize,
-                  padding: resolvedPadding,
-                  targetCenterX: currentTargetCenter,
-                  axis: widget.axis,
-                  offsetIgnore: widget.offsetIgnore,
-                  messagePadding: widget.messagePadding,
-                  messageDecoration: widget.messageDecoration,
-                  message: widget.message,
-                ),
-              ),
+      child: CompositedTransformFollower(
+        link: _layerLink,
+        targetAnchor: layout.targetAnchor,
+        followerAnchor: layout.followerAnchor,
+        offset: layout.tooltipOffset,
+        child: animationBuilder.build(
+          scaleAlignment: layout.scaleAlignment,
+          child: Builder(
+            builder: (_) => _buildTooltipContent(
+              layout: layout,
+              screenSize: screenSize,
+              resolvedPadding: resolvedPadding,
+              currentTargetCenter: currentTargetCenter,
             ),
           ),
-          CompositedTransformFollower(
-            link: _layerLink,
-            targetAnchor: layout.targetAnchor,
-            followerAnchor: layout.followerAnchor,
-            offset: layout.triangleOffset,
-            child: animationBuilder.build(
-              scaleAlignment: layout.scaleAlignment,
-              child: SizedBox.fromSize(
-                size: widget.triangleSize,
-                child: TooltipTriangle(
-                  direction: layout.triangleDirection,
-                  color: widget.triangleColor,
-                  radius: widget.triangleRadius,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
+  }
+
+  Widget _buildTooltipContent({
+    required TooltipLayoutData layout,
+    required Size screenSize,
+    required EdgeInsets resolvedPadding,
+    required double currentTargetCenter,
+  }) {
+    final triangle = SizedBox.fromSize(
+      size: widget.triangleSize,
+      child: TooltipTriangle(
+        direction: layout.triangleDirection,
+        color: widget.triangleColor,
+        radius: widget.triangleRadius,
+      ),
+    );
+
+    final messageBox = TooltipOverlay(
+      messageKey: _messageKey,
+      maxWidth: layout.maxWidth,
+      screenSize: screenSize,
+      padding: resolvedPadding,
+      targetCenterX: currentTargetCenter,
+      axis: widget.axis,
+      offsetIgnore: widget.offsetIgnore,
+      messagePadding: widget.messagePadding,
+      messageDecoration: widget.messageDecoration,
+      message: widget.message,
+    );
+
+    if (widget.axis == Axis.vertical) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: layout.showAbove
+            ? [messageBox, triangle]
+            : [triangle, messageBox],
+      );
+    } else {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: layout.showLeft
+            ? [messageBox, triangle]
+            : [triangle, messageBox],
+      );
+    }
   }
 
   bool _shouldDismissOnTapInside() {

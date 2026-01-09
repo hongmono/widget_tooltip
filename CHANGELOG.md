@@ -1,3 +1,10 @@
+## 1.2.1
+
+### Improvements
+* **Unified tooltip widget**: Merge triangle and message box into a single widget for smoother animations
+* **Better scale animation**: Scale animation now expands from a single center point instead of separately
+* **Code simplification**: Remove `triangleOffset` calculation and `kTriangleOverlapOffset` constant
+
 ## 1.2.0
 
 ### Features
