@@ -9,8 +9,7 @@ A highly customizable tooltip widget for Flutter applications with smart positio
 [![popularity](https://img.shields.io/pub/popularity/widget_tooltip)](https://pub.dev/packages/widget_tooltip/score)
 [![pub points](https://img.shields.io/pub/points/widget_tooltip)](https://pub.dev/packages/widget_tooltip/score)
 
-<!-- TODO: Add demo gif -->
-<!-- ![Demo](assets/demo.gif) -->
+**[Live Demo](https://hongmono.github.io/widget_tooltip/)**
 
 ## Features
 
@@ -26,9 +25,6 @@ Supports multiple ways to show tooltips:
 | `hover` | Show on mouse hover (Desktop/Web) |
 | `manual` | Control programmatically |
 
-<!-- TODO: Add trigger modes gif -->
-<!-- ![Trigger Modes](assets/trigger_modes.gif) -->
-
 ### Smart Positioning
 
 Tooltip automatically positions based on screen location:
@@ -37,15 +33,9 @@ Tooltip automatically positions based on screen location:
 
 Use `autoFlip: false` with `direction` to fix position.
 
-<!-- TODO: Add auto positioning gif -->
-<!-- ![Auto Positioning](assets/auto_position.gif) -->
-
 ### Directions
 
-Control tooltip placement with `direction` and `axis`:
-
-<!-- TODO: Add directions gif -->
-<!-- ![Directions](assets/directions.gif) -->
+Control tooltip placement with `direction` and `axis`.
 
 ### Dismiss Modes
 
@@ -60,14 +50,11 @@ Control tooltip placement with `direction` and `axis`:
 
 Full control over appearance with `messageDecoration`, `triangleColor`, `messagePadding`, and more.
 
-<!-- TODO: Add styling gif -->
-<!-- ![Custom Styling](assets/styling.gif) -->
-
 ## Installation
 
 ```yaml
 dependencies:
-  widget_tooltip: ^1.2.0
+  widget_tooltip: ^1.2.1
 ```
 
 ```bash

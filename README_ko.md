@@ -9,8 +9,7 @@ Flutter 앱을 위한 고도로 커스터마이징 가능한 툴팁 위젯. 스�
 [![popularity](https://img.shields.io/pub/popularity/widget_tooltip)](https://pub.dev/packages/widget_tooltip/score)
 [![pub points](https://img.shields.io/pub/points/widget_tooltip)](https://pub.dev/packages/widget_tooltip/score)
 
-<!-- TODO: 데모 gif 추가 -->
-<!-- ![Demo](assets/demo.gif) -->
+**[라이브 데모](https://hongmono.github.io/widget_tooltip/)**
 
 ## 기능
 
@@ -26,9 +25,6 @@ Flutter 앱을 위한 고도로 커스터마이징 가능한 툴팁 위젯. 스�
 | `hover` | 마우스 호버 시 표시 (Desktop/Web) |
 | `manual` | 프로그래밍 방식으로 제어 |
 
-<!-- TODO: 트리거 모드 gif 추가 -->
-<!-- ![트리거 모드](assets/trigger_modes.gif) -->
-
 ### 스마트 포지셔닝
 
 툴팁이 화면 위치에 따라 자동으로 배치됩니다:
@@ -37,15 +33,9 @@ Flutter 앱을 위한 고도로 커스터마이징 가능한 툴팁 위젯. 스�
 
 `autoFlip: false`와 `direction`을 사용하면 위치를 고정할 수 있습니다.
 
-<!-- TODO: 자동 포지셔닝 gif 추가 -->
-<!-- ![자동 포지셔닝](assets/auto_position.gif) -->
-
 ### 방향 설정
 
-`direction`과 `axis`로 툴팁 위치를 제어합니다:
-
-<!-- TODO: 방향 gif 추가 -->
-<!-- ![방향](assets/directions.gif) -->
+`direction`과 `axis`로 툴팁 위치를 제어합니다.
 
 ### 닫기 모드
 
@@ -60,14 +50,11 @@ Flutter 앱을 위한 고도로 커스터마이징 가능한 툴팁 위젯. 스�
 
 `messageDecoration`, `triangleColor`, `messagePadding` 등으로 외관을 완전히 제어할 수 있습니다.
 
-<!-- TODO: 스타일링 gif 추가 -->
-<!-- ![커스텀 스타일링](assets/styling.gif) -->
-
 ## 설치
 
 ```yaml
 dependencies:
-  widget_tooltip: ^1.2.0
+  widget_tooltip: ^1.2.1
 ```
 
 ```bash
