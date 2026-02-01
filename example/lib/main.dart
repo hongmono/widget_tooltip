@@ -51,7 +51,7 @@ class _TooltipShowcaseState extends State<TooltipShowcase>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -75,6 +75,7 @@ class _TooltipShowcaseState extends State<TooltipShowcase>
             Tab(text: 'Directions'),
             Tab(text: 'Animations'),
             Tab(text: 'Features'),
+            Tab(text: 'ListView'),
           ],
         ),
       ),
@@ -86,6 +87,7 @@ class _TooltipShowcaseState extends State<TooltipShowcase>
           DirectionsPage(),
           AnimationsPage(),
           FeaturesPage(),
+          ListViewPage(),
         ],
       ),
     );
@@ -800,6 +802,90 @@ class FeaturesPage extends StatelessWidget {
         ),
 
         const SizedBox(height: 48),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// ListView Page (Issue #7 regression test)
+// ============================================================================
+
+class ListViewPage extends StatelessWidget {
+  const ListViewPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _SectionTitle('ListView Direction Test'),
+        const SizedBox(height: 8),
+        Text(
+          'All tooltips should appear above the item (direction: top)',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey[600],
+              ),
+        ),
+        const SizedBox(height: 16),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemBuilder: (context, index) {
+            final colors = [
+              Colors.blue,
+              Colors.green,
+              Colors.orange,
+              Colors.purple,
+              Colors.teal,
+              Colors.pink,
+              Colors.indigo,
+              Colors.red,
+              Colors.cyan,
+              Colors.amber,
+            ];
+            final color = colors[index % colors.length];
+
+            return WidgetTooltip(
+              message: Text(
+                'Tooltip for Item $index (should be above)',
+                style: const TextStyle(color: Colors.white),
+              ),
+              triggerMode: WidgetTooltipTriggerMode.tap,
+              direction: WidgetTooltipDirection.top,
+              messageDecoration: _tooltipDecoration(color),
+              triangleColor: color,
+              child: Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.touch_app, color: color),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Item $index — Tap me',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+          separatorBuilder: (context, index) {
+            return const SizedBox(height: 12);
+          },
+          itemCount: 15,
+        ),
       ],
     );
   }
