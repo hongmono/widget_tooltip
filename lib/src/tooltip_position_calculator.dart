@@ -95,17 +95,14 @@ class TooltipPositionCalculator {
   }
 
   /// Calculates tooltip position flags based on target position and screen center.
+  ///
+  /// When [direction] is explicitly set, it always takes precedence.
+  /// When [direction] is null and [autoFlip] is true, position is determined
+  /// by the target's location relative to the screen center.
   ({bool showAbove, bool showLeft}) _calculatePosition({
     required Offset targetCenter,
     required Size screenSize,
   }) {
-    if (autoFlip) {
-      return (
-        showAbove: targetCenter.dy > screenSize.height / 2,
-        showLeft: targetCenter.dx > screenSize.width / 2,
-      );
-    }
-
     return (
       showAbove: switch (direction) {
         WidgetTooltipDirection.top => true,

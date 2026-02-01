@@ -695,6 +695,84 @@ void main() {
       });
     });
 
+    group('Direction with autoFlip (Issue #7)', () {
+      testWidgets(
+          'direction top is respected with autoFlip true in top half of screen',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 50),
+                  child: WidgetTooltip(
+                    message: Text('Tooltip message'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    direction: WidgetTooltipDirection.top,
+                    autoFlip: true,
+                    animation: WidgetTooltipAnimation.none,
+                    child: Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+      });
+
+      testWidgets(
+          'direction top is respected in ListView items',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ListView.separated(
+                padding: const EdgeInsets.all(16.0),
+                itemBuilder: (context, index) {
+                  return WidgetTooltip(
+                    message: Text('Tooltip $index'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    direction: WidgetTooltipDirection.top,
+                    animation: WidgetTooltipAnimation.none,
+                    child: Container(
+                      height: 100.0,
+                      width: double.infinity,
+                      color: Colors.blue,
+                      child: Text('Item $index'),
+                    ),
+                  );
+                },
+                separatorBuilder: (context, index) {
+                  return const SizedBox(height: 16.0);
+                },
+                itemCount: 20,
+              ),
+            ),
+          ),
+        );
+
+        // Tap first item (top of screen)
+        await tester.tap(find.text('Item 0'));
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip 0'), findsOneWidget);
+
+        // Dismiss
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+
+        // Tap second item
+        await tester.tap(find.text('Item 1'));
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip 1'), findsOneWidget);
+      });
+    });
+
     group('DismissMode tapOutside', () {
       testWidgets('tapOutside dismisses only on tap outside tooltip',
           (WidgetTester tester) async {
