@@ -262,6 +262,85 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         ),
       );
 
+      // Build combined tooltip (messageBox + triangle as one unit)
+      // so animations (especially scale) apply uniformly.
+      final dx = layout.dx;
+      final dy = layout.dy;
+      final ts = widget.triangleSize;
+
+      final Widget combinedTooltip;
+      final Offset combinedOffset;
+
+      switch (layout.targetAnchor) {
+        case Alignment.bottomCenter: // tooltip below target
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: ts.height - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                top: 0,
+                left: messageBoxSize.width / 2 - dx - ts.width / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(dx, widget.targetPadding);
+        case Alignment.topCenter: // tooltip above target
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: ts.height - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                bottom: 0,
+                left: messageBoxSize.width / 2 - dx - ts.width / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(dx, -widget.targetPadding);
+        case Alignment.centerRight: // tooltip to the right
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(left: ts.width - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                left: 0,
+                top: messageBoxSize.height / 2 - dy - ts.height / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(widget.targetPadding, dy);
+        case Alignment.centerLeft: // tooltip to the left
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(right: ts.width - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                right: 0,
+                top: messageBoxSize.height / 2 - dy - ts.height / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(-widget.targetPadding, dy);
+        default:
+          combinedTooltip = messageBox;
+          combinedOffset = Offset.zero;
+      }
+
       final scaleAlignment = _scaleAlignment(layout.targetAnchor);
 
       _overlayEntry = OverlayEntry(
@@ -278,20 +357,10 @@ class _WidgetTooltipState extends State<WidgetTooltip>
                   link: _layerLink,
                   targetAnchor: layout.targetAnchor,
                   followerAnchor: layout.followerAnchor,
-                  offset: layout.messageBoxOffset,
+                  offset: combinedOffset,
                   child: animationBuilder.build(
                     scaleAlignment: scaleAlignment,
-                    child: messageBox,
-                  ),
-                ),
-                CompositedTransformFollower(
-                  link: _layerLink,
-                  targetAnchor: layout.targetAnchor,
-                  followerAnchor: layout.followerAnchor,
-                  offset: layout.triangleOffset,
-                  child: animationBuilder.build(
-                    scaleAlignment: scaleAlignment,
-                    child: triangle,
+                    child: combinedTooltip,
                   ),
                 ),
               ],
@@ -341,8 +410,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   ({
     Alignment targetAnchor,
     Alignment followerAnchor,
-    Offset messageBoxOffset,
-    Offset triangleOffset,
+    double dx,
+    double dy,
   })? _calculateLayout(Size messageBoxSize) {
     final renderBox =
         _targetKey.currentContext?.findRenderObject() as RenderBox?;
@@ -434,41 +503,11 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       }
     }
 
-    // Triangle offset
-    final Offset triangleOffset = switch (targetAnchor) {
-      Alignment.bottomCenter => Offset(0, widget.targetPadding),
-      Alignment.topCenter => Offset(0, -widget.targetPadding),
-      Alignment.centerLeft => Offset(-widget.targetPadding, 0),
-      Alignment.centerRight => Offset(widget.targetPadding, 0),
-      _ => Offset.zero,
-    };
-
-    // Message box offset (includes triangle size + overflow adjustment)
-    final Offset messageBoxOffset = switch (targetAnchor) {
-      Alignment.bottomCenter when widget.offsetIgnore =>
-        Offset(0, widget.triangleSize.height + widget.targetPadding - 1),
-      Alignment.topCenter when widget.offsetIgnore =>
-        Offset(0, -widget.triangleSize.height - widget.targetPadding + 1),
-      Alignment.centerLeft when widget.offsetIgnore =>
-        Offset(-widget.targetPadding - widget.triangleSize.width + 1, 0),
-      Alignment.centerRight when widget.offsetIgnore =>
-        Offset(widget.targetPadding + widget.triangleSize.width - 1, 0),
-      Alignment.bottomCenter =>
-        Offset(dx, widget.triangleSize.height + widget.targetPadding - 1),
-      Alignment.topCenter =>
-        Offset(dx, -widget.triangleSize.height - widget.targetPadding + 1),
-      Alignment.centerLeft =>
-        Offset(-widget.targetPadding - widget.triangleSize.width + 1, dy),
-      Alignment.centerRight =>
-        Offset(widget.targetPadding + widget.triangleSize.width - 1, dy),
-      _ => Offset.zero,
-    };
-
     return (
       targetAnchor: targetAnchor,
       followerAnchor: followerAnchor,
-      messageBoxOffset: messageBoxOffset,
-      triangleOffset: triangleOffset,
+      dx: widget.offsetIgnore ? 0.0 : dx,
+      dy: widget.offsetIgnore ? 0.0 : dy,
     );
   }
 
