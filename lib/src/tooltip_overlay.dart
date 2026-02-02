@@ -55,7 +55,10 @@ class TooltipOverlay extends StatefulWidget {
 
 class _TooltipOverlayState extends State<TooltipOverlay> {
   double _horizontalOffset = 0;
+  double _verticalOffset = 0;
   bool _measured = false;
+  int _retryCount = 0;
+  static const int _maxRetries = 5;
 
   @override
   void initState() {
@@ -76,6 +79,18 @@ class _TooltipOverlayState extends State<TooltipOverlay> {
     if (renderObject == null ||
         renderObject is! RenderBox ||
         !renderObject.hasSize) {
+      // Retry: render object may not be ready yet on first frame
+      if (_retryCount < _maxRetries) {
+        _retryCount++;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _calculateOffset();
+        });
+      } else {
+        // Give up waiting — show the tooltip anyway to avoid permanent invisibility
+        if (mounted && !_measured) {
+          setState(() => _measured = true);
+        }
+      }
       return;
     }
     final renderBox = renderObject;
@@ -83,26 +98,56 @@ class _TooltipOverlayState extends State<TooltipOverlay> {
     final size = renderBox.size;
     final position = renderBox.localToGlobal(Offset.zero);
 
-    double offset = 0;
+    double horizontalOffset = 0;
+    double verticalOffset = 0;
 
     if (widget.axis == Axis.vertical) {
+      // Horizontal overflow handling
       // Check left edge
       if (position.dx < widget.padding.left) {
-        offset = widget.padding.left - position.dx;
+        horizontalOffset = widget.padding.left - position.dx;
       }
       // Check right edge
       else if (position.dx + size.width >
           widget.screenSize.width - widget.padding.right) {
-        offset = widget.screenSize.width -
+        horizontalOffset = widget.screenSize.width -
             widget.padding.right -
             position.dx -
             size.width;
       }
+
+      // Vertical overflow handling
+      // Check top edge — tooltip goes above screen
+      if (position.dy < widget.padding.top) {
+        verticalOffset = widget.padding.top - position.dy;
+      }
+      // Check bottom edge — tooltip goes below screen
+      else if (position.dy + size.height >
+          widget.screenSize.height - widget.padding.bottom) {
+        verticalOffset = widget.screenSize.height -
+            widget.padding.bottom -
+            position.dy -
+            size.height;
+      }
+    } else {
+      // Horizontal axis: check vertical overflow
+      if (position.dy < widget.padding.top) {
+        verticalOffset = widget.padding.top - position.dy;
+      } else if (position.dy + size.height >
+          widget.screenSize.height - widget.padding.bottom) {
+        verticalOffset = widget.screenSize.height -
+            widget.padding.bottom -
+            position.dy -
+            size.height;
+      }
     }
 
-    if (offset != _horizontalOffset || !_measured) {
+    if (horizontalOffset != _horizontalOffset ||
+        verticalOffset != _verticalOffset ||
+        !_measured) {
       setState(() {
-        _horizontalOffset = offset;
+        _horizontalOffset = horizontalOffset;
+        _verticalOffset = verticalOffset;
         _measured = true;
       });
     }
@@ -113,7 +158,7 @@ class _TooltipOverlayState extends State<TooltipOverlay> {
     return Opacity(
       opacity: _measured ? 1.0 : 0.0,
       child: Transform.translate(
-        offset: Offset(_horizontalOffset, 0),
+        offset: Offset(_horizontalOffset, _verticalOffset),
         child: Material(
           key: widget.messageKey,
           type: MaterialType.transparency,

@@ -166,6 +166,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   final _messageKey = GlobalKey(debugLabel: 'WidgetTooltip_message');
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
+  bool _isDisposed = false;
+  bool _hasBeenVisibleOnce = false;
 
   @override
   void initState() {
@@ -194,6 +196,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _cancelAutoDismissTimer();
     _dismiss();
     _controller.removeListener(_listener);
@@ -286,6 +289,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   void _show() {
     if (_animationController.isAnimating) return;
     if (_overlayEntry != null) return;
+    _hasBeenVisibleOnce = false;
 
     final renderObject = _targetKey.currentContext?.findRenderObject();
     if (renderObject == null || renderObject is! RenderBox) {
@@ -356,10 +360,20 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   }) {
     final renderObject = _targetKey.currentContext?.findRenderObject();
 
+    // If widget is disposed, dismiss immediately
+    if (_isDisposed) {
+      _scheduleDismiss();
+      return const SizedBox.shrink();
+    }
+
+    // If render object is temporarily unavailable, don't dismiss on first occurrence.
+    // Only dismiss if the target was previously visible and is now gone (e.g., scrolled away).
     if (renderObject == null ||
         renderObject is! RenderBox ||
         !renderObject.attached) {
-      _scheduleDismiss();
+      if (_hasBeenVisibleOnce) {
+        _scheduleDismiss();
+      }
       return const SizedBox.shrink();
     }
 
@@ -370,10 +384,13 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       targetSize: targetSize,
       screenSize: screenSize,
     )) {
-      _scheduleDismiss();
+      if (_hasBeenVisibleOnce) {
+        _scheduleDismiss();
+      }
       return const SizedBox.shrink();
     }
 
+    _hasBeenVisibleOnce = true;
     final currentTargetCenter = currentTargetPosition.dx + targetSize.width / 2;
 
     final animationBuilder = TooltipAnimationBuilder(
