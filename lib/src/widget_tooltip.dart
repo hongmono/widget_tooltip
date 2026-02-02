@@ -262,34 +262,39 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         ),
       );
 
+      final scaleAlignment = _scaleAlignment(layout.targetAnchor);
+
       _overlayEntry = OverlayEntry(
         builder: (_) {
-          return animationBuilder.build(
-            scaleAlignment: _scaleAlignment(layout.targetAnchor),
-            child: TapRegion(
-              onTapInside:
-                  _shouldDismissOnTapInside() ? _controller.dismiss : null,
-              onTapOutside:
-                  _shouldDismissOnTapOutside() ? _controller.dismiss : null,
-              child: Stack(
-                children: [
-                  const SizedBox.expand(),
-                  CompositedTransformFollower(
-                    link: _layerLink,
-                    targetAnchor: layout.targetAnchor,
-                    followerAnchor: layout.followerAnchor,
-                    offset: layout.messageBoxOffset,
+          return TapRegion(
+            onTapInside:
+                _shouldDismissOnTapInside() ? _controller.dismiss : null,
+            onTapOutside:
+                _shouldDismissOnTapOutside() ? _controller.dismiss : null,
+            child: Stack(
+              children: [
+                const SizedBox.expand(),
+                CompositedTransformFollower(
+                  link: _layerLink,
+                  targetAnchor: layout.targetAnchor,
+                  followerAnchor: layout.followerAnchor,
+                  offset: layout.messageBoxOffset,
+                  child: animationBuilder.build(
+                    scaleAlignment: scaleAlignment,
                     child: messageBox,
                   ),
-                  CompositedTransformFollower(
-                    link: _layerLink,
-                    targetAnchor: layout.targetAnchor,
-                    followerAnchor: layout.followerAnchor,
-                    offset: layout.triangleOffset,
+                ),
+                CompositedTransformFollower(
+                  link: _layerLink,
+                  targetAnchor: layout.targetAnchor,
+                  followerAnchor: layout.followerAnchor,
+                  offset: layout.triangleOffset,
+                  child: animationBuilder.build(
+                    scaleAlignment: scaleAlignment,
                     child: triangle,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
