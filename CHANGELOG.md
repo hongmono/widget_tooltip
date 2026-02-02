@@ -1,3 +1,15 @@
+## 1.2.2
+
+### Bug Fixes
+* **direction in ListView**: Fix `direction` parameter being ignored inside `ListView` and other scrollable widgets ([#7](https://github.com/hongmono/widget_tooltip/issues/7))
+* **tooltip positioning**: Fix tooltip appearing near screen center instead of target due to incorrect measurement constraints
+* **scale animation**: Fix scale animation not working — now triangle and message box animate as a unified element
+
+### Improvements
+* **Two-phase positioning**: Restore proven measure-then-position approach for reliable tooltip placement
+* **Combined tooltip element**: Triangle and message box are now a single composite widget, ensuring consistent animation behavior
+* **ListView example**: Add ListView tab to example app for testing scroll scenarios
+
 ## 1.2.1
 
 ### Improvements
