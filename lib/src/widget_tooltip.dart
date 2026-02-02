@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import 'enums.dart';
 import 'tooltip_animation_builder.dart';
@@ -43,6 +44,7 @@ class WidgetTooltip extends StatefulWidget {
     this.autoDismissDuration,
     this.animationDuration = const Duration(milliseconds: 300),
     this.autoFlip = true,
+    this.semanticLabel,
   });
 
   final Widget message;
@@ -66,6 +68,13 @@ class WidgetTooltip extends StatefulWidget {
   final Duration? autoDismissDuration;
   final Duration animationDuration;
   final bool autoFlip;
+
+  /// An optional semantic label for the tooltip content.
+  ///
+  /// When provided, the tooltip overlay is wrapped in a [Semantics] widget
+  /// and [SemanticsService.announce] is called when the tooltip appears,
+  /// making the tooltip accessible to screen readers.
+  final String? semanticLabel;
 
   @override
   State<WidgetTooltip> createState() => _WidgetTooltipState();
@@ -163,6 +172,21 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       child = MouseRegion(
         onEnter: (_) => _controller.show(),
         onExit: (_) => _controller.dismiss(),
+        child: child,
+      );
+    }
+
+    // Wrap child with Semantics hints based on trigger mode
+    if (widget.semanticLabel != null) {
+      child = Semantics(
+        label: widget.semanticLabel,
+        hint: _triggerMode == WidgetTooltipTriggerMode.longPress
+            ? 'Long press to show tooltip'
+            : _triggerMode == WidgetTooltipTriggerMode.tap
+                ? 'Double tap to show tooltip'
+                : _triggerMode == WidgetTooltipTriggerMode.doubleTap
+                    ? 'Double tap to show tooltip'
+                    : null,
         child: child,
       );
     }
@@ -360,7 +384,13 @@ class _WidgetTooltipState extends State<WidgetTooltip>
                   offset: combinedOffset,
                   child: animationBuilder.build(
                     scaleAlignment: scaleAlignment,
-                    child: combinedTooltip,
+                    child: widget.semanticLabel != null
+                        ? Semantics(
+                            liveRegion: true,
+                            label: widget.semanticLabel,
+                            child: combinedTooltip,
+                          )
+                        : combinedTooltip,
                   ),
                 ),
               ],
@@ -375,6 +405,14 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         _animationController.forward();
       } else {
         _animationController.value = 1.0;
+      }
+
+      // Announce tooltip content for screen readers
+      if (widget.semanticLabel != null) {
+        SemanticsService.announce(
+          widget.semanticLabel!,
+          TextDirection.ltr,
+        );
       }
     });
 

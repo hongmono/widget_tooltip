@@ -878,6 +878,117 @@ void main() {
       });
     });
 
+    group('Accessibility', () {
+      testWidgets('child has Semantics with label when semanticLabel is set',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  semanticLabel: 'Help tooltip',
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label == 'Help tooltip',
+        );
+        expect(semantics, findsOneWidget);
+      });
+
+      testWidgets(
+          'child has long press hint when trigger mode is longPress',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  semanticLabel: 'Help tooltip',
+                  triggerMode: WidgetTooltipTriggerMode.longPress,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.hint == 'Long press to show tooltip',
+        );
+        expect(semantics, findsOneWidget);
+      });
+
+      testWidgets(
+          'tooltip overlay has Semantics when semanticLabel is provided',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  semanticLabel: 'Help tooltip',
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.liveRegion == true &&
+              widget.properties.label == 'Help tooltip',
+        );
+        expect(semantics, findsOneWidget);
+      });
+
+      testWidgets('no Semantics wrapper when semanticLabel is null',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final semanticsWithLabel = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.liveRegion == true,
+        );
+        expect(semanticsWithLabel, findsNothing);
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(semanticsWithLabel, findsNothing);
+      });
+    });
+
     group('Edge cases', () {
       testWidgets('rapid show/dismiss does not cause errors',
           (WidgetTester tester) async {
