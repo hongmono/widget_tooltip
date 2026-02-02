@@ -54,7 +54,7 @@ Full control over appearance with `messageDecoration`, `triangleColor`, `message
 
 ```yaml
 dependencies:
-  widget_tooltip: ^1.2.1
+  widget_tooltip: ^1.2.2
 ```
 
 ```bash

@@ -1,12 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
 import 'enums.dart';
 import 'tooltip_animation_builder.dart';
 import 'tooltip_controller.dart';
-import 'tooltip_overlay.dart';
-import 'tooltip_position_calculator.dart';
 import 'triangles/tooltip_triangle.dart';
 
 export 'enums.dart';
@@ -14,40 +13,9 @@ export 'tooltip_controller.dart';
 
 /// A highly customizable tooltip widget that displays a message when triggered.
 ///
-/// [WidgetTooltip] provides rich customization options including:
-/// - Multiple trigger modes (tap, long press, double tap, hover, manual)
-/// - Various dismiss behaviors (tap outside, tap anywhere, tap inside, manual)
-/// - Smart positioning with automatic direction flipping when space is limited
-/// - Customizable animations (fade, scale, scaleAndFade, none)
-/// - Triangle indicator with adjustable size, color, and corner radius
-///
-/// Example:
-/// ```dart
-/// WidgetTooltip(
-///   message: Text('This is a tooltip'),
-///   triggerMode: WidgetTooltipTriggerMode.tap,
-///   child: Icon(Icons.info),
-/// )
-/// ```
-///
-/// For programmatic control, use [TooltipController]:
-/// ```dart
-/// final controller = TooltipController();
-///
-/// WidgetTooltip(
-///   controller: controller,
-///   triggerMode: WidgetTooltipTriggerMode.manual,
-///   message: Text('Controlled tooltip'),
-///   child: Icon(Icons.info),
-/// )
-/// ```
-///
-/// See also:
-/// - [TooltipController] for programmatic control
-/// - [WidgetTooltipTriggerMode] for trigger options
-/// - [WidgetTooltipDismissMode] for dismiss behavior options
-/// - [WidgetTooltipDirection] for positioning options
-/// - [WidgetTooltipAnimation] for animation options
+/// Uses a two-phase positioning approach (from v1.1.4):
+/// 1. Renders the tooltip invisibly to measure its actual size
+/// 2. Uses the measured size to calculate overflow-adjusted offsets
 class WidgetTooltip extends StatefulWidget {
   const WidgetTooltip({
     super.key,
@@ -77,76 +45,26 @@ class WidgetTooltip extends StatefulWidget {
     this.autoFlip = true,
   });
 
-  /// Message widget displayed in tooltip
   final Widget message;
-
-  /// Target widget that triggers the tooltip
   final Widget child;
-
-  /// Triangle indicator color
   final Color triangleColor;
-
-  /// Triangle indicator size
   final Size triangleSize;
-
-  /// Gap between target widget and tooltip
   final double targetPadding;
-
-  /// Triangle corner radius
   final double triangleRadius;
-
-  /// Callback when tooltip is shown
   final VoidCallback? onShow;
-
-  /// Callback when tooltip is dismissed
   final VoidCallback? onDismiss;
-
-  /// Controller for manual tooltip control
   final TooltipController? controller;
-
-  /// Padding inside the message box
   final EdgeInsetsGeometry messagePadding;
-
-  /// Decoration for the message box
   final BoxDecoration messageDecoration;
-
-  /// Screen edge padding for tooltip positioning
   final EdgeInsetsGeometry padding;
-
-  /// Tooltip axis direction
   final Axis axis;
-
-  /// Trigger mode for showing tooltip
   final WidgetTooltipTriggerMode? triggerMode;
-
-  /// Dismiss mode for hiding tooltip
   final WidgetTooltipDismissMode? dismissMode;
-
-  /// Whether to ignore offset adjustments for screen bounds
   final bool offsetIgnore;
-
-  /// Forced tooltip direction
   final WidgetTooltipDirection? direction;
-
-  /// Animation type for showing/hiding tooltip
   final WidgetTooltipAnimation animation;
-
-  /// Duration before auto-dismiss (null = no auto-dismiss)
   final Duration? autoDismissDuration;
-
-  /// Animation duration
   final Duration animationDuration;
-
-  /// Whether to automatically position tooltip based on screen center.
-  ///
-  /// When true (default), the tooltip position is determined by where the target
-  /// is on screen:
-  /// - Target in top half -> tooltip appears below
-  /// - Target in bottom half -> tooltip appears above
-  /// - Target in left half -> tooltip appears to the right
-  /// - Target in right half -> tooltip appears to the left
-  ///
-  /// When false, the [direction] property is used to fix the tooltip position.
   final bool autoFlip;
 
   @override
@@ -162,8 +80,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   WidgetTooltipDismissMode? _dismissMode;
   Timer? _autoDismissTimer;
 
-  final _targetKey = GlobalKey(debugLabel: 'WidgetTooltip_target');
-  final _messageKey = GlobalKey(debugLabel: 'WidgetTooltip_message');
+  final _targetKey = GlobalKey();
+  final _messageBoxKey = GlobalKey();
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
@@ -237,23 +155,6 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     _autoDismissTimer = null;
   }
 
-  void _scheduleDismiss() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.dismiss();
-    });
-  }
-
-  bool _isTargetVisible({
-    required Offset position,
-    required Size targetSize,
-    required Size screenSize,
-  }) {
-    return position.dy > -targetSize.height &&
-        position.dy < screenSize.height &&
-        position.dx > -targetSize.width &&
-        position.dx < screenSize.width;
-  }
-
   @override
   Widget build(BuildContext context) {
     Widget child = SizedBox(key: _targetKey, child: widget.child);
@@ -283,170 +184,341 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Show / Dismiss — v1.1.4 two-phase approach
+  // ---------------------------------------------------------------------------
+
   void _show() {
     if (_animationController.isAnimating) return;
     if (_overlayEntry != null) return;
 
-    final renderObject = _targetKey.currentContext?.findRenderObject();
-    if (renderObject == null || renderObject is! RenderBox) {
-      assert(() {
-        if (renderObject != null && renderObject is! RenderBox) {
-          debugPrint(
-            'WidgetTooltip: Target render object is not a RenderBox. '
-            'Got ${renderObject.runtimeType} instead.',
-          );
-        }
-        return true;
-      }());
-      return;
-    }
-
-    final targetSize = renderObject.size;
-    final targetPosition = renderObject.localToGlobal(Offset.zero);
-    final screenSize = MediaQuery.of(context).size;
     final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
+    final horizontalPadding = resolvedPadding.left + resolvedPadding.right;
 
-    final targetCenter = Offset(
-      targetPosition.dx + targetSize.width / 2,
-      targetPosition.dy + targetSize.height / 2,
-    );
-
-    final calculator = TooltipPositionCalculator(
-      axis: widget.axis,
-      autoFlip: widget.autoFlip,
-      direction: widget.direction,
-      targetPadding: widget.targetPadding,
-      triangleSize: widget.triangleSize,
-    );
-
-    final layout = calculator.calculate(
-      targetCenter: targetCenter,
-      screenSize: screenSize,
-      padding: resolvedPadding,
-      targetPosition: targetPosition,
-      targetSize: targetSize,
-    );
-
-    _overlayEntry = OverlayEntry(
-      builder: (_) => _buildOverlayContent(
-        targetSize: targetSize,
-        screenSize: screenSize,
-        resolvedPadding: resolvedPadding,
-        layout: layout,
+    final Widget messageBox = Material(
+      type: MaterialType.transparency,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width - horizontalPadding,
+        ),
+        child: Container(
+          key: _messageBoxKey,
+          padding: widget.messagePadding,
+          decoration: widget.messageDecoration,
+          child: widget.message,
+        ),
       ),
+    );
+
+    // Phase 1: Insert invisible overlay to measure message box size.
+    // Wrap in Stack to get loose constraints (same as the final overlay),
+    // so the messageBox takes its intrinsic size rather than expanding.
+    _overlayEntry = OverlayEntry(
+      builder: (_) {
+        return IgnorePointer(
+          child: Opacity(
+            opacity: 0,
+            child: Stack(children: [messageBox]),
+          ),
+        );
+      },
     );
 
     Overlay.of(context).insert(_overlayEntry!);
 
-    if (widget.animation != WidgetTooltipAnimation.none) {
-      _animationController.forward();
-    } else {
-      _animationController.value = 1.0;
-    }
+    // Phase 2: Measure → calculate position → build final overlay
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final messageBoxRenderBox =
+          _messageBoxKey.currentContext?.findRenderObject() as RenderBox?;
+      final messageBoxSize = messageBoxRenderBox?.size;
+
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+
+      if (messageBoxSize == null) return;
+
+      final layout = _calculateLayout(messageBoxSize);
+      if (layout == null) return;
+
+      final animationBuilder = TooltipAnimationBuilder(
+        animation: widget.animation,
+        animationValue: _animation,
+      );
+
+      final triangleDirection = switch (layout.targetAnchor) {
+        Alignment.bottomCenter => AxisDirection.up,
+        Alignment.topCenter => AxisDirection.down,
+        Alignment.centerLeft => AxisDirection.right,
+        Alignment.centerRight => AxisDirection.left,
+        _ => AxisDirection.down,
+      };
+
+      final Widget triangle = SizedBox.fromSize(
+        size: widget.triangleSize,
+        child: TooltipTriangle(
+          direction: triangleDirection,
+          color: widget.triangleColor,
+          radius: widget.triangleRadius,
+        ),
+      );
+
+      // Build combined tooltip (messageBox + triangle as one unit)
+      // so animations (especially scale) apply uniformly.
+      final dx = layout.dx;
+      final dy = layout.dy;
+      final ts = widget.triangleSize;
+
+      final Widget combinedTooltip;
+      final Offset combinedOffset;
+
+      switch (layout.targetAnchor) {
+        case Alignment.bottomCenter: // tooltip below target
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: ts.height - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                top: 0,
+                left: messageBoxSize.width / 2 - dx - ts.width / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(dx, widget.targetPadding);
+        case Alignment.topCenter: // tooltip above target
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: ts.height - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                bottom: 0,
+                left: messageBoxSize.width / 2 - dx - ts.width / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(dx, -widget.targetPadding);
+        case Alignment.centerRight: // tooltip to the right
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(left: ts.width - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                left: 0,
+                top: messageBoxSize.height / 2 - dy - ts.height / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(widget.targetPadding, dy);
+        case Alignment.centerLeft: // tooltip to the left
+          combinedTooltip = Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(right: ts.width - 1),
+                child: messageBox,
+              ),
+              Positioned(
+                right: 0,
+                top: messageBoxSize.height / 2 - dy - ts.height / 2,
+                child: triangle,
+              ),
+            ],
+          );
+          combinedOffset = Offset(-widget.targetPadding, dy);
+        default:
+          combinedTooltip = messageBox;
+          combinedOffset = Offset.zero;
+      }
+
+      final scaleAlignment = _scaleAlignment(layout.targetAnchor);
+
+      _overlayEntry = OverlayEntry(
+        builder: (_) {
+          return TapRegion(
+            onTapInside:
+                _shouldDismissOnTapInside() ? _controller.dismiss : null,
+            onTapOutside:
+                _shouldDismissOnTapOutside() ? _controller.dismiss : null,
+            child: Stack(
+              children: [
+                const SizedBox.expand(),
+                CompositedTransformFollower(
+                  link: _layerLink,
+                  targetAnchor: layout.targetAnchor,
+                  followerAnchor: layout.followerAnchor,
+                  offset: combinedOffset,
+                  child: animationBuilder.build(
+                    scaleAlignment: scaleAlignment,
+                    child: combinedTooltip,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      Overlay.of(context).insert(_overlayEntry!);
+
+      if (widget.animation != WidgetTooltipAnimation.none) {
+        _animationController.forward();
+      } else {
+        _animationController.value = 1.0;
+      }
+    });
 
     _startAutoDismissTimer();
     widget.onShow?.call();
   }
 
-  Widget _buildOverlayContent({
-    required Size targetSize,
-    required Size screenSize,
-    required EdgeInsets resolvedPadding,
-    required TooltipLayoutData layout,
-  }) {
-    final renderObject = _targetKey.currentContext?.findRenderObject();
+  Future<void> _dismiss() async {
+    _cancelAutoDismissTimer();
+    if (_overlayEntry == null) return;
 
-    if (renderObject == null ||
-        renderObject is! RenderBox ||
-        !renderObject.attached) {
-      _scheduleDismiss();
-      return const SizedBox.shrink();
+    try {
+      if (widget.animation != WidgetTooltipAnimation.none) {
+        await _animationController.reverse();
+      }
+    } catch (_) {
+      // May fail if disposed during animation
+    } finally {
+      try {
+        _overlayEntry?.remove();
+      } catch (_) {
+        // Overlay may already be removed
+      }
+      _overlayEntry = null;
+      widget.onDismiss?.call();
     }
+  }
 
-    final currentTargetPosition = renderObject.localToGlobal(Offset.zero);
+  // ---------------------------------------------------------------------------
+  // Layout calculation — v1.1.4 logic, unchanged
+  // ---------------------------------------------------------------------------
 
-    if (!_isTargetVisible(
-      position: currentTargetPosition,
-      targetSize: targetSize,
-      screenSize: screenSize,
-    )) {
-      _scheduleDismiss();
-      return const SizedBox.shrink();
-    }
+  ({
+    Alignment targetAnchor,
+    Alignment followerAnchor,
+    double dx,
+    double dy,
+  })? _calculateLayout(Size messageBoxSize) {
+    final renderBox =
+        _targetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return null;
 
-    final currentTargetCenter = currentTargetPosition.dx + targetSize.width / 2;
-
-    final animationBuilder = TooltipAnimationBuilder(
-      animation: widget.animation,
-      animationValue: _animation,
+    final targetSize = renderBox.size;
+    final targetPosition = renderBox.localToGlobal(Offset.zero);
+    final targetCenter = Offset(
+      targetPosition.dx + targetSize.width / 2,
+      targetPosition.dy + targetSize.height / 2,
     );
 
-    return TapRegion(
-      onTapInside: _shouldDismissOnTapInside() ? _controller.dismiss : null,
-      onTapOutside: _shouldDismissOnTapOutside() ? _controller.dismiss : null,
-      child: CompositedTransformFollower(
-        link: _layerLink,
-        targetAnchor: layout.targetAnchor,
-        followerAnchor: layout.followerAnchor,
-        offset: layout.tooltipOffset,
-        child: animationBuilder.build(
-          scaleAlignment: layout.scaleAlignment,
-          child: Builder(
-            builder: (_) => _buildTooltipContent(
-              layout: layout,
-              screenSize: screenSize,
-              resolvedPadding: resolvedPadding,
-              currentTargetCenter: currentTargetCenter,
-            ),
-          ),
-        ),
-      ),
+    // Direction flags — v1.1.4 logic: direction always takes precedence
+    final bool isLeft = switch (widget.direction) {
+      WidgetTooltipDirection.left => false,
+      WidgetTooltipDirection.right => true,
+      _ => targetCenter.dx <= MediaQuery.of(context).size.width / 2,
+    };
+
+    final bool isRight = switch (widget.direction) {
+      WidgetTooltipDirection.left => true,
+      WidgetTooltipDirection.right => false,
+      _ => targetCenter.dx > MediaQuery.of(context).size.width / 2,
+    };
+
+    final bool isBottom = switch (widget.direction) {
+      WidgetTooltipDirection.top => true,
+      WidgetTooltipDirection.bottom => false,
+      _ => targetCenter.dy > MediaQuery.of(context).size.height / 2,
+    };
+
+    final bool isTop = switch (widget.direction) {
+      WidgetTooltipDirection.top => false,
+      WidgetTooltipDirection.bottom => true,
+      _ => targetCenter.dy <= MediaQuery.of(context).size.height / 2,
+    };
+
+    // Anchors
+    final Alignment targetAnchor = switch (widget.axis) {
+      Axis.horizontal when isRight => Alignment.centerLeft,
+      Axis.horizontal when isLeft => Alignment.centerRight,
+      Axis.vertical when isTop => Alignment.bottomCenter,
+      Axis.vertical when isBottom => Alignment.topCenter,
+      _ => Alignment.center,
+    };
+
+    final Alignment followerAnchor = switch (widget.axis) {
+      Axis.horizontal when isRight => Alignment.centerRight,
+      Axis.horizontal when isLeft => Alignment.centerLeft,
+      Axis.vertical when isTop => Alignment.topCenter,
+      Axis.vertical when isBottom => Alignment.bottomCenter,
+      _ => Alignment.center,
+    };
+
+    // Overflow-adjusted offsets — v1.1.4 logic
+    final double overflowWidth =
+        (messageBoxSize.width - targetSize.width) / 2;
+    final edgeFromLeft = targetPosition.dx - overflowWidth;
+    final edgeFromRight = MediaQuery.of(context).size.width -
+        (targetPosition.dx + targetSize.width + overflowWidth);
+    final edgeFromHorizontal = min(edgeFromLeft, edgeFromRight);
+
+    double dx = 0;
+    if (edgeFromHorizontal < widget.padding.horizontal / 2) {
+      if (isLeft) {
+        dx = (widget.padding.horizontal / 2) - edgeFromHorizontal;
+      } else if (isRight) {
+        dx = -(widget.padding.horizontal / 2) + edgeFromHorizontal;
+      }
+    }
+
+    final double overflowHeight =
+        (messageBoxSize.height - targetSize.height) / 2;
+    final edgeFromTop = targetPosition.dy - overflowHeight;
+    final edgeFromBottom = MediaQuery.of(context).size.height -
+        (targetPosition.dy + targetSize.height + overflowHeight);
+    final edgeFromVertical = min(edgeFromTop, edgeFromBottom);
+
+    double dy = 0;
+    if (edgeFromVertical < widget.padding.vertical / 2) {
+      if (isTop) {
+        dy = MediaQuery.of(context).padding.top +
+            (widget.padding.vertical / 2) -
+            edgeFromVertical;
+      } else if (isBottom) {
+        dy = MediaQuery.of(context).padding.bottom -
+            (widget.padding.vertical / 2) +
+            edgeFromVertical;
+      }
+    }
+
+    return (
+      targetAnchor: targetAnchor,
+      followerAnchor: followerAnchor,
+      dx: widget.offsetIgnore ? 0.0 : dx,
+      dy: widget.offsetIgnore ? 0.0 : dy,
     );
   }
 
-  Widget _buildTooltipContent({
-    required TooltipLayoutData layout,
-    required Size screenSize,
-    required EdgeInsets resolvedPadding,
-    required double currentTargetCenter,
-  }) {
-    final triangle = SizedBox.fromSize(
-      size: widget.triangleSize,
-      child: TooltipTriangle(
-        direction: layout.triangleDirection,
-        color: widget.triangleColor,
-        radius: widget.triangleRadius,
-      ),
-    );
-
-    final messageBox = TooltipOverlay(
-      messageKey: _messageKey,
-      maxWidth: layout.maxWidth,
-      screenSize: screenSize,
-      padding: resolvedPadding,
-      targetCenterX: currentTargetCenter,
-      axis: widget.axis,
-      offsetIgnore: widget.offsetIgnore,
-      messagePadding: widget.messagePadding,
-      messageDecoration: widget.messageDecoration,
-      message: widget.message,
-    );
-
-    if (widget.axis == Axis.vertical) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: layout.showAbove
-            ? [messageBox, triangle]
-            : [triangle, messageBox],
-      );
-    } else {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: layout.showLeft
-            ? [messageBox, triangle]
-            : [triangle, messageBox],
-      );
-    }
+  Alignment _scaleAlignment(Alignment targetAnchor) {
+    return switch (targetAnchor) {
+      Alignment.topCenter => Alignment.bottomCenter,
+      Alignment.bottomCenter => Alignment.topCenter,
+      Alignment.centerLeft => Alignment.centerRight,
+      Alignment.centerRight => Alignment.centerLeft,
+      _ => Alignment.center,
+    };
   }
 
   bool _shouldDismissOnTapInside() {
@@ -461,20 +533,5 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         _dismissMode == WidgetTooltipDismissMode.tapAnywhere ||
         // ignore: deprecated_member_use_from_same_package
         _dismissMode == WidgetTooltipDismissMode.tapAnyWhere;
-  }
-
-  Future<void> _dismiss() async {
-    _cancelAutoDismissTimer();
-    if (_overlayEntry == null) return;
-
-    try {
-      if (widget.animation != WidgetTooltipAnimation.none) {
-        await _animationController.reverse();
-      }
-    } finally {
-      _overlayEntry?.remove();
-      _overlayEntry = null;
-      widget.onDismiss?.call();
-    }
   }
 }
