@@ -210,13 +210,15 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       ),
     );
 
-    // Phase 1: Insert invisible overlay to measure message box size
+    // Phase 1: Insert invisible overlay to measure message box size.
+    // Wrap in Stack to get loose constraints (same as the final overlay),
+    // so the messageBox takes its intrinsic size rather than expanding.
     _overlayEntry = OverlayEntry(
       builder: (_) {
         return IgnorePointer(
           child: Opacity(
             opacity: 0,
-            child: messageBox,
+            child: Stack(children: [messageBox]),
           ),
         );
       },
