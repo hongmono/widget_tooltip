@@ -695,6 +695,146 @@ void main() {
       });
     });
 
+    group('autoFlip behavior', () {
+      testWidgets(
+          'autoFlip false without direction defaults to showing below',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        // Place target at bottom of screen — without autoFlip,
+        // tooltip should still appear below (default), not flip to top.
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 100),
+                  child: WidgetTooltip(
+                    message: const Text('Tooltip message'),
+                    controller: controller,
+                    autoFlip: false,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pumpAndSettle();
+
+        // Tooltip should be visible (rendered below target as default)
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Verify the tooltip is positioned below the target
+        final targetBox =
+            tester.renderObject(find.text('Target')) as RenderBox;
+        final targetPos = targetBox.localToGlobal(Offset.zero);
+
+        final tooltipBox =
+            tester.renderObject(find.text('Tooltip message')) as RenderBox;
+        final tooltipPos = tooltipBox.localToGlobal(Offset.zero);
+
+        // Tooltip top should be at or below the target bottom
+        expect(tooltipPos.dy, greaterThanOrEqualTo(targetPos.dy));
+      });
+
+      testWidgets(
+          'autoFlip false with direction top always shows above regardless of position',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        // Place target near top of screen — with autoFlip: false + direction: top,
+        // it should still show above, not flip.
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 80),
+                  child: WidgetTooltip(
+                    message: const Text('Tooltip message'),
+                    controller: controller,
+                    autoFlip: false,
+                    direction: WidgetTooltipDirection.top,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Verify the tooltip is positioned above the target
+        final targetBox =
+            tester.renderObject(find.text('Target')) as RenderBox;
+        final targetPos = targetBox.localToGlobal(Offset.zero);
+
+        final tooltipBox =
+            tester.renderObject(find.text('Tooltip message')) as RenderBox;
+        final tooltipPos = tooltipBox.localToGlobal(Offset.zero);
+
+        // Tooltip bottom should be at or above the target top
+        expect(tooltipPos.dy + tooltipBox.size.height,
+            lessThanOrEqualTo(targetPos.dy + 20)); // allow some padding
+      });
+
+      testWidgets(
+          'autoFlip true (default) auto-positions based on screen center',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        // Place target at top of screen — with autoFlip: true (default),
+        // it should auto-position below the target since it's in the top half.
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 50),
+                  child: WidgetTooltip(
+                    message: const Text('Tooltip message'),
+                    controller: controller,
+                    autoFlip: true,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Verify the tooltip is positioned below the target (auto-flipped to bottom)
+        final targetBox =
+            tester.renderObject(find.text('Target')) as RenderBox;
+        final targetPos = targetBox.localToGlobal(Offset.zero);
+
+        final tooltipBox =
+            tester.renderObject(find.text('Tooltip message')) as RenderBox;
+        final tooltipPos = tooltipBox.localToGlobal(Offset.zero);
+
+        // Tooltip should be below the target
+        expect(tooltipPos.dy, greaterThanOrEqualTo(targetPos.dy));
+      });
+    });
+
     group('Direction with autoFlip (Issue #7)', () {
       testWidgets(
           'direction top is respected with autoFlip true in top half of screen',
