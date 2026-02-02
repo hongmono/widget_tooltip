@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'enums.dart';
 import 'tooltip_animation_builder.dart';
 import 'tooltip_controller.dart';
-import 'tooltip_overlay.dart';
 import 'tooltip_position_calculator.dart';
 import 'triangles/tooltip_triangle.dart';
 
@@ -20,6 +19,10 @@ export 'tooltip_controller.dart';
 /// - Smart positioning with automatic direction flipping when space is limited
 /// - Customizable animations (fade, scale, scaleAndFade, none)
 /// - Triangle indicator with adjustable size, color, and corner radius
+///
+/// Uses a two-phase positioning approach:
+/// 1. First renders the tooltip to measure its actual size
+/// 2. Then calculates precise overflow-adjusted offsets using the measured size
 ///
 /// Example:
 /// ```dart
@@ -146,7 +149,9 @@ class WidgetTooltip extends StatefulWidget {
   /// - Target in left half -> tooltip appears to the right
   /// - Target in right half -> tooltip appears to the left
   ///
-  /// When false, the [direction] property is used to fix the tooltip position.
+  /// When false and no [direction] is set, the tooltip defaults to below/right.
+  /// When [direction] is explicitly set, it always takes precedence regardless
+  /// of this value.
   final bool autoFlip;
 
   @override
@@ -167,7 +172,13 @@ class _WidgetTooltipState extends State<WidgetTooltip>
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   bool _isDisposed = false;
-  bool _hasBeenVisibleOnce = false;
+
+  /// Holds the calculated layout data after measurement.
+  /// null during measurement phase, set after measurement.
+  TooltipLayoutData? _layout;
+
+  /// Max width constraint for the message box.
+  double _maxWidth = 0;
 
   @override
   void initState() {
@@ -240,23 +251,6 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     _autoDismissTimer = null;
   }
 
-  void _scheduleDismiss() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.dismiss();
-    });
-  }
-
-  bool _isTargetVisible({
-    required Offset position,
-    required Size targetSize,
-    required Size screenSize,
-  }) {
-    return position.dy > -targetSize.height &&
-        position.dy < screenSize.height &&
-        position.dx > -targetSize.width &&
-        position.dx < screenSize.width;
-  }
-
   @override
   Widget build(BuildContext context) {
     Widget child = SizedBox(key: _targetKey, child: widget.child);
@@ -286,10 +280,13 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     );
   }
 
+  /// Shows the tooltip using a two-phase approach:
+  /// 1. Phase 1 (Measure): Insert overlay with message box to measure its size
+  /// 2. Phase 2 (Position): Use measured size to calculate precise offsets,
+  ///    rebuild overlay with final positioned layout
   void _show() {
     if (_animationController.isAnimating) return;
     if (_overlayEntry != null) return;
-    _hasBeenVisibleOnce = false;
 
     final renderObject = _targetKey.currentContext?.findRenderObject();
     if (renderObject == null || renderObject is! RenderBox) {
@@ -309,6 +306,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     final targetPosition = renderObject.localToGlobal(Offset.zero);
     final screenSize = MediaQuery.of(context).size;
     final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
+    final safePadding = MediaQuery.of(context).padding;
 
     final targetCenter = Offset(
       targetPosition.dx + targetSize.width / 2,
@@ -321,9 +319,11 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       direction: widget.direction,
       targetPadding: widget.targetPadding,
       triangleSize: widget.triangleSize,
+      offsetIgnore: widget.offsetIgnore,
     );
 
-    final layout = calculator.calculate(
+    // Pre-calculate constraints for the measurement phase
+    final constraints = calculator.calculateConstraints(
       targetCenter: targetCenter,
       screenSize: screenSize,
       padding: resolvedPadding,
@@ -331,89 +331,94 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       targetSize: targetSize,
     );
 
+    _maxWidth = constraints.maxWidth;
+    _layout = null; // Start in measurement phase
+
     _overlayEntry = OverlayEntry(
-      builder: (_) => _buildOverlayContent(
-        targetSize: targetSize,
-        screenSize: screenSize,
-        resolvedPadding: resolvedPadding,
-        layout: layout,
-      ),
+      builder: (_) => _buildOverlayContent(),
     );
 
     Overlay.of(context).insert(_overlayEntry!);
 
-    if (widget.animation != WidgetTooltipAnimation.none) {
-      _animationController.forward();
-    } else {
-      _animationController.value = 1.0;
-    }
+    // Phase 1 → Phase 2 transition: measure then reposition
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isDisposed || _overlayEntry == null) return;
+
+      final messageRenderBox =
+          _messageKey.currentContext?.findRenderObject() as RenderBox?;
+      if (messageRenderBox == null || !messageRenderBox.hasSize) return;
+
+      final messageBoxSize = messageRenderBox.size;
+
+      // Calculate final layout with measured size
+      _layout = calculator.calculate(
+        targetCenter: targetCenter,
+        screenSize: screenSize,
+        padding: resolvedPadding,
+        safePadding: safePadding,
+        targetPosition: targetPosition,
+        targetSize: targetSize,
+        messageBoxSize: messageBoxSize,
+      );
+
+      // Replace overlay with positioned layout
+      _overlayEntry?.remove();
+      _overlayEntry = OverlayEntry(
+        builder: (_) => _buildOverlayContent(),
+      );
+      Overlay.of(context).insert(_overlayEntry!);
+
+      // Start animation after positioning
+      if (widget.animation != WidgetTooltipAnimation.none) {
+        _animationController.forward();
+      } else {
+        _animationController.value = 1.0;
+      }
+    });
 
     _startAutoDismissTimer();
     widget.onShow?.call();
   }
 
-  Widget _buildOverlayContent({
-    required Size targetSize,
-    required Size screenSize,
-    required EdgeInsets resolvedPadding,
-    required TooltipLayoutData layout,
-  }) {
-    final renderObject = _targetKey.currentContext?.findRenderObject();
-
-    // If widget is disposed, dismiss immediately
+  /// Builds the overlay content based on the current phase.
+  ///
+  /// During measurement phase ([_layout] is null): renders an invisible
+  /// message box to measure its size.
+  ///
+  /// During positioned phase ([_layout] is set): renders the final tooltip
+  /// with proper overflow-adjusted positioning.
+  Widget _buildOverlayContent() {
     if (_isDisposed) {
-      _scheduleDismiss();
       return const SizedBox.shrink();
     }
 
-    // If render object is temporarily unavailable, don't dismiss on first occurrence.
-    // Only dismiss if the target was previously visible and is now gone (e.g., scrolled away).
-    if (renderObject == null ||
-        renderObject is! RenderBox ||
-        !renderObject.attached) {
-      if (_hasBeenVisibleOnce) {
-        _scheduleDismiss();
-      }
-      return const SizedBox.shrink();
+    if (_layout == null) {
+      // Phase 1: Measurement - render message invisibly to measure
+      return _buildMeasurementOverlay();
+    } else {
+      // Phase 2: Final positioned overlay
+      return _buildPositionedOverlay(_layout!);
     }
+  }
 
-    final currentTargetPosition = renderObject.localToGlobal(Offset.zero);
-
-    if (!_isTargetVisible(
-      position: currentTargetPosition,
-      targetSize: targetSize,
-      screenSize: screenSize,
-    )) {
-      if (_hasBeenVisibleOnce) {
-        _scheduleDismiss();
-      }
-      return const SizedBox.shrink();
-    }
-
-    _hasBeenVisibleOnce = true;
-    final currentTargetCenter = currentTargetPosition.dx + targetSize.width / 2;
-
-    final animationBuilder = TooltipAnimationBuilder(
-      animation: widget.animation,
-      animationValue: _animation,
-    );
-
-    return TapRegion(
-      onTapInside: _shouldDismissOnTapInside() ? _controller.dismiss : null,
-      onTapOutside: _shouldDismissOnTapOutside() ? _controller.dismiss : null,
-      child: CompositedTransformFollower(
-        link: _layerLink,
-        targetAnchor: layout.targetAnchor,
-        followerAnchor: layout.followerAnchor,
-        offset: layout.tooltipOffset,
-        child: animationBuilder.build(
-          scaleAlignment: layout.scaleAlignment,
-          child: Builder(
-            builder: (_) => _buildTooltipContent(
-              layout: layout,
-              screenSize: screenSize,
-              resolvedPadding: resolvedPadding,
-              currentTargetCenter: currentTargetCenter,
+  /// Builds the invisible measurement overlay.
+  ///
+  /// The message box is rendered with opacity 0 to get its actual size
+  /// without visual artifacts. The widget tree contains the message text
+  /// so finders can locate it (important for tests).
+  Widget _buildMeasurementOverlay() {
+    return IgnorePointer(
+      child: Opacity(
+        opacity: 0,
+        child: Material(
+          type: MaterialType.transparency,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: _maxWidth),
+            child: Container(
+              key: _messageKey,
+              padding: widget.messagePadding,
+              decoration: widget.messageDecoration,
+              child: widget.message,
             ),
           ),
         ),
@@ -421,12 +426,27 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     );
   }
 
-  Widget _buildTooltipContent({
-    required TooltipLayoutData layout,
-    required Size screenSize,
-    required EdgeInsets resolvedPadding,
-    required double currentTargetCenter,
-  }) {
+  /// Builds the final positioned overlay using v1.1.4's proven structure:
+  /// - Stack with SizedBox.expand() for full-screen tap detection
+  /// - Separate CompositedTransformFollowers for message box and triangle
+  /// - Each with independently calculated overflow-adjusted offsets
+  Widget _buildPositionedOverlay(TooltipLayoutData layout) {
+    final messageBox = Material(
+      type: MaterialType.transparency,
+      child: Semantics(
+        container: true,
+        liveRegion: true,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: layout.maxWidth),
+          child: Container(
+            padding: widget.messagePadding,
+            decoration: widget.messageDecoration,
+            child: widget.message,
+          ),
+        ),
+      ),
+    );
+
     final triangle = SizedBox.fromSize(
       size: widget.triangleSize,
       child: TooltipTriangle(
@@ -436,34 +456,39 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       ),
     );
 
-    final messageBox = TooltipOverlay(
-      messageKey: _messageKey,
-      maxWidth: layout.maxWidth,
-      screenSize: screenSize,
-      padding: resolvedPadding,
-      targetCenterX: currentTargetCenter,
-      axis: widget.axis,
-      offsetIgnore: widget.offsetIgnore,
-      messagePadding: widget.messagePadding,
-      messageDecoration: widget.messageDecoration,
-      message: widget.message,
+    final animationBuilder = TooltipAnimationBuilder(
+      animation: widget.animation,
+      animationValue: _animation,
     );
 
-    if (widget.axis == Axis.vertical) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: layout.showAbove
-            ? [messageBox, triangle]
-            : [triangle, messageBox],
-      );
-    } else {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: layout.showLeft
-            ? [messageBox, triangle]
-            : [triangle, messageBox],
-      );
-    }
+    return TapRegion(
+      onTapInside: _shouldDismissOnTapInside() ? _controller.dismiss : null,
+      onTapOutside: _shouldDismissOnTapOutside() ? _controller.dismiss : null,
+      child: Stack(
+        children: [
+          CompositedTransformFollower(
+            link: _layerLink,
+            targetAnchor: layout.targetAnchor,
+            followerAnchor: layout.followerAnchor,
+            offset: layout.messageBoxOffset,
+            child: animationBuilder.build(
+              scaleAlignment: layout.scaleAlignment,
+              child: messageBox,
+            ),
+          ),
+          CompositedTransformFollower(
+            link: _layerLink,
+            targetAnchor: layout.targetAnchor,
+            followerAnchor: layout.followerAnchor,
+            offset: layout.triangleOffset,
+            child: animationBuilder.build(
+              scaleAlignment: layout.scaleAlignment,
+              child: triangle,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _shouldDismissOnTapInside() {
@@ -485,12 +510,20 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     if (_overlayEntry == null) return;
 
     try {
-      if (widget.animation != WidgetTooltipAnimation.none) {
+      if (widget.animation != WidgetTooltipAnimation.none && !_isDisposed) {
         await _animationController.reverse();
       }
+    } catch (_) {
+      // Animation may fail if widget is disposed during animation
     } finally {
-      _overlayEntry?.remove();
+      _animationController.value = 0.0;
+      try {
+        _overlayEntry?.remove();
+      } catch (_) {
+        // Overlay may already be removed if widget tree was disposed
+      }
       _overlayEntry = null;
+      _layout = null;
       widget.onDismiss?.call();
     }
   }
