@@ -12,6 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
   widget_tooltip:
+  burst_icon_button:
+  floating_widget:
   cupertino_icons: ^1.0.2
 
 dev_dependencies:

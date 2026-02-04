@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'packages/burst_icon_button/burst_icon_button_demo.dart';
+import 'packages/floating_widget/floating_widget_demo.dart';
 import 'packages/widget_tooltip/widget_tooltip_demo.dart';
 
 void main() {
@@ -22,6 +24,8 @@ class ShowcaseApp extends StatelessWidget {
       routes: {
         '/': (_) => const HomePage(),
         '/widget_tooltip': (_) => const WidgetTooltipDemo(),
+        '/burst_icon_button': (_) => const BurstIconButtonDemo(),
+        '/floating_widget': (_) => const FloatingWidgetDemo(),
       },
     );
   }
@@ -40,7 +44,22 @@ class HomePage extends StatelessWidget {
       color: Colors.indigo,
       version: '1.3.0',
     ),
-    // Add more packages here as they are added to the monorepo.
+    _PackageInfo(
+      name: 'burst_icon_button',
+      description: 'Icon button with burst animation on tap/long-press',
+      route: '/burst_icon_button',
+      icon: Icons.favorite,
+      color: Colors.red,
+      version: '0.1.38',
+    ),
+    _PackageInfo(
+      name: 'floating_widget',
+      description: 'A draggable floating widget with boundary constraints',
+      route: '/floating_widget',
+      icon: Icons.drag_indicator,
+      color: Colors.teal,
+      version: '0.0.1',
+    ),
   ];
 
   @override

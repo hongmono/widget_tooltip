@@ -6,6 +6,8 @@ environment:
 
 workspace:
   - packages/widget_tooltip
+  - packages/burst_icon_button
+  - packages/floating_widget
   - apps/example
 
 dev_dependencies:
