@@ -17,15 +17,11 @@ melos:
   scripts:
     analyze:
       run: dart analyze .
-      exec:
-        concurrency: 1
       description: Run dart analyze in all packages.
 
     test:
-      run: flutter test
-      packageFilters:
-        dirExists: test
-      description: Run flutter test in all packages.
+      run: cd packages/widget_tooltip && flutter test
+      description: Run flutter test for widget_tooltip package.
 
     format:
       run: dart format .
