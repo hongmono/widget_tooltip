@@ -9,7 +9,7 @@ A highly customizable tooltip widget for Flutter applications with smart positio
 [![popularity](https://img.shields.io/pub/popularity/widget_tooltip)](https://pub.dev/packages/widget_tooltip/score)
 [![pub points](https://img.shields.io/pub/points/widget_tooltip)](https://pub.dev/packages/widget_tooltip/score)
 
-**[Live Demo](https://hongmono.github.io/widget_tooltip/)**
+**[Live Demo](https://hongmono.github.io/flutter-packages/)**
 
 ## Features
 
