@@ -216,7 +216,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     if (_animationController.isAnimating) return;
     if (_overlayEntry != null) return;
 
-    final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
+    final resolvedPadding = widget.padding.resolve(Directionality.of(context));
     final horizontalPadding = resolvedPadding.left + resolvedPadding.right;
 
     final Widget messageBox = Material(
@@ -261,7 +261,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
 
       if (messageBoxSize == null) return;
 
-      final layout = _calculateLayout(messageBoxSize);
+      final textDirection = Directionality.of(context);
+      final layout = _calculateLayout(messageBoxSize, textDirection);
       if (layout == null) return;
 
       final animationBuilder = TooltipAnimationBuilder(
@@ -450,7 +451,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     Alignment followerAnchor,
     double dx,
     double dy,
-  })? _calculateLayout(Size messageBoxSize) {
+  })? _calculateLayout(Size messageBoxSize, TextDirection textDirection) {
     final renderBox =
         _targetKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return null;
@@ -462,17 +463,22 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       targetPosition.dy + targetSize.height / 2,
     );
 
-    // Direction flags — v1.1.4 logic: direction always takes precedence
+    // Direction flags — v1.1.4 logic: direction always takes precedence.
+    // For auto-positioning (no explicit direction), RTL mirrors the
+    // horizontal heuristic so the tooltip opens toward the "start" side.
+    final bool isRtl = textDirection == TextDirection.rtl;
+    final bool inLeftHalf = targetCenter.dx <= MediaQuery.of(context).size.width / 2;
+
     final bool isLeft = switch (widget.direction) {
       WidgetTooltipDirection.left => false,
       WidgetTooltipDirection.right => true,
-      _ => targetCenter.dx <= MediaQuery.of(context).size.width / 2,
+      _ => isRtl ? !inLeftHalf : inLeftHalf,
     };
 
     final bool isRight = switch (widget.direction) {
       WidgetTooltipDirection.left => true,
       WidgetTooltipDirection.right => false,
-      _ => targetCenter.dx > MediaQuery.of(context).size.width / 2,
+      _ => isRtl ? inLeftHalf : !inLeftHalf,
     };
 
     final bool isBottom = switch (widget.direction) {
