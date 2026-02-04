@@ -1,39 +1,113 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# FloatingWidget
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+A draggable floating widget for Flutter that can be repositioned anywhere on screen with boundary constraints, snap-to-edge behavior, and smooth animations.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- 🖱️ **Draggable** — freely move any widget around the screen
+- 📐 **Boundary clamping** — floating widget stays within configurable padding
+- 🧲 **Snap to edge** — optionally snap to the nearest horizontal edge on release
+- 🎞️ **Smooth animations** — animated transitions when snapping or clamping
+- 📍 **Initial alignment** — place the widget at predefined positions (e.g. `bottomRight`)
+- 📡 **Position callback** — get notified whenever the position changes
 
-## Getting started
+## Installation
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Add to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  floating_widget:
+    path: packages/floating_widget  # or your preferred source
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+### Basic
 
 ```dart
-const like = 'sample';
+FloatingWidget(
+  floatingWidget: FloatingActionButton(
+    onPressed: () {},
+    child: Icon(Icons.add),
+  ),
+  child: Scaffold(
+    body: Center(child: Text('Hello World')),
+  ),
+)
 ```
 
-## Additional information
+### Snap to Edge
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+The floating widget animates to the nearest left or right edge when released:
+
+```dart
+FloatingWidget(
+  floatingWidget: FloatingActionButton(
+    onPressed: () {},
+    child: Icon(Icons.chat),
+  ),
+  snapToEdge: true,
+  padding: EdgeInsets.all(16),
+  child: YourContent(),
+)
+```
+
+### Initial Alignment
+
+Use `initialAlignment` instead of calculating raw offsets:
+
+```dart
+FloatingWidget(
+  floatingWidget: MyWidget(),
+  initialAlignment: FloatingAlignment.bottomRight,
+  padding: EdgeInsets.all(16),
+  child: YourContent(),
+)
+```
+
+### Position Callback
+
+```dart
+FloatingWidget(
+  floatingWidget: MyWidget(),
+  onPositionChanged: (offset) {
+    print('Floating widget moved to: $offset');
+  },
+  child: YourContent(),
+)
+```
+
+## API Reference
+
+### FloatingWidget
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `floatingWidget` | `Widget` | **required** | The draggable floating widget |
+| `child` | `Widget` | **required** | The main content beneath the floating widget |
+| `initialPosition` | `Offset` | `Offset.zero` | Starting position (ignored if `initialAlignment` is set) |
+| `initialAlignment` | `FloatingAlignment?` | `null` | Predefined starting alignment |
+| `padding` | `EdgeInsets` | `EdgeInsets.zero` | Inset from screen edges for boundary clamping |
+| `snapToEdge` | `bool` | `false` | Snap to nearest horizontal edge on release |
+| `snapAnimationDuration` | `Duration` | `300ms` | Duration of snap/clamp animation |
+| `snapAnimationCurve` | `Curve` | `Curves.easeOut` | Animation curve for snap/clamp |
+| `onPositionChanged` | `ValueChanged<Offset>?` | `null` | Called when position changes after drag |
+
+### FloatingAlignment
+
+| Value | Description |
+|---|---|
+| `topLeft` | Top-left corner |
+| `topCenter` | Top-center |
+| `topRight` | Top-right corner |
+| `centerLeft` | Center-left |
+| `center` | Center |
+| `centerRight` | Center-right |
+| `bottomLeft` | Bottom-left corner |
+| `bottomCenter` | Bottom-center |
+| `bottomRight` | Bottom-right corner |
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
