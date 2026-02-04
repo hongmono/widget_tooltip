@@ -8,35 +8,22 @@ on:
     - 'floating_widget-v*'
 
 jobs:
-  publish:
-    permissions:
-      id-token: write
+  determine-package:
     runs-on: ubuntu-latest
+    outputs:
+      package: ${{ steps.pkg.outputs.package }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.38.5'
-          channel: 'stable'
-
-      - name: Determine package
+      - name: Determine package from tag
         id: pkg
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           PACKAGE="${TAG%%-v*}"
           echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
-          echo "Publishing package: $PACKAGE"
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Publish - dry run
-        run: dart pub publish --dry-run
-        working-directory: packages/${{ steps.pkg.outputs.package }}
-
-      - name: Publish
-        run: dart pub publish -f
-        working-directory: packages/${{ steps.pkg.outputs.package }}
+  publish:
+    needs: determine-package
+    permissions:
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/${{ needs.determine-package.outputs.package }}
