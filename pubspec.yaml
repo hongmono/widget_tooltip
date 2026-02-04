@@ -12,7 +12,7 @@ dev_dependencies:
   melos: ^7.0.0
 
 melos:
-  repository: https://github.com/hongmono/widget_tooltip
+  repository: https://github.com/hongmono/flutter-packages
 
   scripts:
     analyze:

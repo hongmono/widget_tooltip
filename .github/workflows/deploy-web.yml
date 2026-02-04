@@ -25,7 +25,7 @@ jobs:
       - name: Build web
         run: |
           cd apps/example
-          flutter build web --base-href "/widget_tooltip/" --release
+          flutter build web --base-href "/flutter-packages/" --release
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
