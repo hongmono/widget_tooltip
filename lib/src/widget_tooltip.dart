@@ -463,34 +463,46 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       targetPosition.dy + targetSize.height / 2,
     );
 
-    // Direction flags — v1.1.4 logic: direction always takes precedence.
-    // For auto-positioning (no explicit direction), RTL mirrors the
-    // horizontal heuristic so the tooltip opens toward the "start" side.
+    // Direction flags — direction always takes precedence.
+    // When autoFlip is enabled, RTL mirrors the horizontal heuristic so the
+    // tooltip opens toward the "start" side. When autoFlip is false and no
+    // direction is set, use sensible defaults (bottom for vertical, right for
+    // horizontal) instead of screen-center logic.
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final bool isRtl = textDirection == TextDirection.rtl;
-    final bool inLeftHalf = targetCenter.dx <= MediaQuery.of(context).size.width / 2;
+    final bool inLeftHalf = targetCenter.dx <= screenWidth / 2;
 
     final bool isLeft = switch (widget.direction) {
       WidgetTooltipDirection.left => false,
       WidgetTooltipDirection.right => true,
-      _ => isRtl ? !inLeftHalf : inLeftHalf,
+      _ => widget.autoFlip
+          ? (isRtl ? !inLeftHalf : inLeftHalf)
+          : true, // default: tooltip to the right (isLeft means target is on left side)
     };
 
     final bool isRight = switch (widget.direction) {
       WidgetTooltipDirection.left => true,
       WidgetTooltipDirection.right => false,
-      _ => isRtl ? inLeftHalf : !inLeftHalf,
+      _ => widget.autoFlip
+          ? (isRtl ? inLeftHalf : !inLeftHalf)
+          : false,
     };
 
     final bool isBottom = switch (widget.direction) {
       WidgetTooltipDirection.top => true,
       WidgetTooltipDirection.bottom => false,
-      _ => targetCenter.dy > MediaQuery.of(context).size.height / 2,
+      _ => widget.autoFlip
+          ? targetCenter.dy > screenHeight / 2
+          : false,
     };
 
     final bool isTop = switch (widget.direction) {
       WidgetTooltipDirection.top => false,
       WidgetTooltipDirection.bottom => true,
-      _ => targetCenter.dy <= MediaQuery.of(context).size.height / 2,
+      _ => widget.autoFlip
+          ? targetCenter.dy <= screenHeight / 2
+          : true, // default: tooltip below target (isTop means target is on top side)
     };
 
     // Anchors
