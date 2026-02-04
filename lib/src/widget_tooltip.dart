@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 import 'enums.dart';
 import 'tooltip_animation_builder.dart';
@@ -43,6 +44,7 @@ class WidgetTooltip extends StatefulWidget {
     this.autoDismissDuration,
     this.animationDuration = const Duration(milliseconds: 300),
     this.autoFlip = true,
+    this.semanticLabel,
   });
 
   final Widget message;
@@ -66,6 +68,13 @@ class WidgetTooltip extends StatefulWidget {
   final Duration? autoDismissDuration;
   final Duration animationDuration;
   final bool autoFlip;
+
+  /// An optional semantic label for the tooltip content.
+  ///
+  /// When provided, the tooltip overlay is wrapped in a [Semantics] widget
+  /// and [SemanticsService.announce] is called when the tooltip appears,
+  /// making the tooltip accessible to screen readers.
+  final String? semanticLabel;
 
   @override
   State<WidgetTooltip> createState() => _WidgetTooltipState();
@@ -167,6 +176,21 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       );
     }
 
+    // Wrap child with Semantics hints based on trigger mode
+    if (widget.semanticLabel != null) {
+      child = Semantics(
+        label: widget.semanticLabel,
+        hint: _triggerMode == WidgetTooltipTriggerMode.longPress
+            ? 'Long press to show tooltip'
+            : _triggerMode == WidgetTooltipTriggerMode.tap
+                ? 'Double tap to show tooltip'
+                : _triggerMode == WidgetTooltipTriggerMode.doubleTap
+                    ? 'Double tap to show tooltip'
+                    : null,
+        child: child,
+      );
+    }
+
     return CompositedTransformTarget(
       link: _layerLink,
       child: GestureDetector(
@@ -192,7 +216,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     if (_animationController.isAnimating) return;
     if (_overlayEntry != null) return;
 
-    final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
+    final resolvedPadding = widget.padding.resolve(Directionality.of(context));
     final horizontalPadding = resolvedPadding.left + resolvedPadding.right;
 
     final Widget messageBox = Material(
@@ -237,7 +261,8 @@ class _WidgetTooltipState extends State<WidgetTooltip>
 
       if (messageBoxSize == null) return;
 
-      final layout = _calculateLayout(messageBoxSize);
+      final textDirection = Directionality.of(context);
+      final layout = _calculateLayout(messageBoxSize, textDirection);
       if (layout == null) return;
 
       final animationBuilder = TooltipAnimationBuilder(
@@ -360,7 +385,13 @@ class _WidgetTooltipState extends State<WidgetTooltip>
                   offset: combinedOffset,
                   child: animationBuilder.build(
                     scaleAlignment: scaleAlignment,
-                    child: combinedTooltip,
+                    child: widget.semanticLabel != null
+                        ? Semantics(
+                            liveRegion: true,
+                            label: widget.semanticLabel,
+                            child: combinedTooltip,
+                          )
+                        : combinedTooltip,
                   ),
                 ),
               ],
@@ -375,6 +406,14 @@ class _WidgetTooltipState extends State<WidgetTooltip>
         _animationController.forward();
       } else {
         _animationController.value = 1.0;
+      }
+
+      // Announce tooltip content for screen readers
+      if (widget.semanticLabel != null) {
+        SemanticsService.announce(
+          widget.semanticLabel!,
+          TextDirection.ltr,
+        );
       }
     });
 
@@ -412,7 +451,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     Alignment followerAnchor,
     double dx,
     double dy,
-  })? _calculateLayout(Size messageBoxSize) {
+  })? _calculateLayout(Size messageBoxSize, TextDirection textDirection) {
     final renderBox =
         _targetKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return null;
@@ -425,16 +464,20 @@ class _WidgetTooltipState extends State<WidgetTooltip>
     );
 
     // Direction flags — direction always takes precedence.
-    // When autoFlip is false and no direction is set, use sensible defaults
-    // (bottom for vertical, right for horizontal) instead of screen-center logic.
+    // When autoFlip is enabled, RTL mirrors the horizontal heuristic so the
+    // tooltip opens toward the "start" side. When autoFlip is false and no
+    // direction is set, use sensible defaults (bottom for vertical, right for
+    // horizontal) instead of screen-center logic.
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final bool isRtl = textDirection == TextDirection.rtl;
+    final bool inLeftHalf = targetCenter.dx <= screenWidth / 2;
 
     final bool isLeft = switch (widget.direction) {
       WidgetTooltipDirection.left => false,
       WidgetTooltipDirection.right => true,
       _ => widget.autoFlip
-          ? targetCenter.dx <= screenWidth / 2
+          ? (isRtl ? !inLeftHalf : inLeftHalf)
           : true, // default: tooltip to the right (isLeft means target is on left side)
     };
 
@@ -442,7 +485,7 @@ class _WidgetTooltipState extends State<WidgetTooltip>
       WidgetTooltipDirection.left => true,
       WidgetTooltipDirection.right => false,
       _ => widget.autoFlip
-          ? targetCenter.dx > screenWidth / 2
+          ? (isRtl ? inLeftHalf : !inLeftHalf)
           : false,
     };
 

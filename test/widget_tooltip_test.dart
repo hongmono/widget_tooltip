@@ -1018,6 +1018,236 @@ void main() {
       });
     });
 
+    group('RTL support', () {
+      testWidgets('tooltip shows correctly in RTL layout',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: WidgetTooltip(
+                    message: Text('RTL Tooltip'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    animation: WidgetTooltipAnimation.none,
+                    child: Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('RTL Tooltip'), findsOneWidget);
+      });
+
+      testWidgets('tooltip shows correctly in RTL with horizontal axis',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: WidgetTooltip(
+                    message: Text('RTL Horizontal Tooltip'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    axis: Axis.horizontal,
+                    animation: WidgetTooltipAnimation.none,
+                    child: Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('RTL Horizontal Tooltip'), findsOneWidget);
+      });
+
+      testWidgets('RTL with EdgeInsetsDirectional padding resolves correctly',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: WidgetTooltip(
+                    message: Text('RTL Padded Tooltip'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    padding: EdgeInsetsDirectional.only(start: 20, end: 10),
+                    animation: WidgetTooltipAnimation.none,
+                    child: Text('Target'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('RTL Padded Tooltip'), findsOneWidget);
+      });
+
+      testWidgets('RTL with explicit direction is respected',
+          (WidgetTester tester) async {
+        for (final direction in WidgetTooltipDirection.values) {
+          await tester.pumpWidget(
+            Directionality(
+              textDirection: TextDirection.rtl,
+              child: MaterialApp(
+                home: Scaffold(
+                  body: Center(
+                    child: WidgetTooltip(
+                      message: Text('RTL $direction'),
+                      triggerMode: WidgetTooltipTriggerMode.tap,
+                      direction: direction,
+                      animation: WidgetTooltipAnimation.none,
+                      child: const Text('Target'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          await tester.tap(find.text('Target'));
+          await tester.pumpAndSettle();
+
+          expect(find.text('RTL $direction'), findsOneWidget);
+
+          // Dismiss for next iteration
+          await tester.tapAt(Offset.zero);
+          await tester.pumpAndSettle();
+        }
+      });
+    });
+
+    group('Accessibility', () {
+      testWidgets('child has Semantics with label when semanticLabel is set',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  semanticLabel: 'Help tooltip',
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // Verify Semantics widget wraps the child with the label
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label == 'Help tooltip',
+        );
+        expect(semantics, findsOneWidget);
+      });
+
+      testWidgets(
+          'child has long press hint when trigger mode is longPress',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  semanticLabel: 'Help tooltip',
+                  triggerMode: WidgetTooltipTriggerMode.longPress,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.hint == 'Long press to show tooltip',
+        );
+        expect(semantics, findsOneWidget);
+      });
+
+      testWidgets(
+          'tooltip overlay has Semantics when semanticLabel is provided',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  semanticLabel: 'Help tooltip',
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        // The overlay should contain a Semantics widget with liveRegion
+        final semantics = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.liveRegion == true &&
+              widget.properties.label == 'Help tooltip',
+        );
+        expect(semantics, findsOneWidget);
+      });
+
+      testWidgets('no Semantics wrapper when semanticLabel is null',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: WidgetTooltip(
+                  message: Text('Tooltip message'),
+                  triggerMode: WidgetTooltipTriggerMode.tap,
+                  child: Text('Target'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // No Semantics with liveRegion should exist before showing
+        final semanticsWithLabel = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.liveRegion == true,
+        );
+        expect(semanticsWithLabel, findsNothing);
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+
+        // Still no liveRegion Semantics since no label was provided
+        expect(semanticsWithLabel, findsNothing);
+      });
+    });
+
     group('Edge cases', () {
       testWidgets('rapid show/dismiss does not cause errors',
           (WidgetTester tester) async {
