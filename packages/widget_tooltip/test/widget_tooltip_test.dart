@@ -1322,5 +1322,197 @@ void main() {
         expect(find.text('No tooltip'), findsOneWidget);
       });
     });
+
+    group('TooltipGroup', () {
+      testWidgets('showing one tooltip dismisses others in the same group',
+          (WidgetTester tester) async {
+        final group = TooltipGroup();
+        final controller1 = TooltipController(group: group);
+        final controller2 = TooltipController(group: group);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  WidgetTooltip(
+                    message: const Text('Tooltip 1'),
+                    controller: controller1,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target 1'),
+                  ),
+                  WidgetTooltip(
+                    message: const Text('Tooltip 2'),
+                    controller: controller2,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target 2'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        // Show first tooltip
+        controller1.show();
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip 1'), findsOneWidget);
+
+        // Show second tooltip — first should be dismissed
+        controller2.show();
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip 2'), findsOneWidget);
+        expect(find.text('Tooltip 1'), findsNothing);
+        expect(controller1.isShow, isFalse);
+      });
+
+      testWidgets('dismissAll dismisses all tooltips in the group',
+          (WidgetTester tester) async {
+        final group = TooltipGroup();
+        final controller1 = TooltipController(group: group);
+        final controller2 = TooltipController(group: group);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  WidgetTooltip(
+                    message: const Text('Tooltip 1'),
+                    controller: controller1,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target 1'),
+                  ),
+                  WidgetTooltip(
+                    message: const Text('Tooltip 2'),
+                    controller: controller2,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target 2'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        controller1.show();
+        await tester.pumpAndSettle();
+
+        group.dismissAll();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip 1'), findsNothing);
+        expect(controller1.isShow, isFalse);
+      });
+
+      testWidgets('controllers without group are independent',
+          (WidgetTester tester) async {
+        final controller1 = TooltipController();
+        final controller2 = TooltipController();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  WidgetTooltip(
+                    message: const Text('Tooltip 1'),
+                    controller: controller1,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target 1'),
+                  ),
+                  WidgetTooltip(
+                    message: const Text('Tooltip 2'),
+                    controller: controller2,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target 2'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        controller1.show();
+        await tester.pumpAndSettle();
+        controller2.show();
+        await tester.pumpAndSettle();
+
+        // Both should be visible — no group linking
+        expect(find.text('Tooltip 1'), findsOneWidget);
+        expect(find.text('Tooltip 2'), findsOneWidget);
+      });
+    });
+
+    group('DismissOnScroll', () {
+      testWidgets('tooltip dismisses when scrollable scrolls',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ListView(
+                children: [
+                  const SizedBox(height: 200),
+                  WidgetTooltip(
+                    message: const Text('Tooltip message'),
+                    triggerMode: WidgetTooltipTriggerMode.tap,
+                    animation: WidgetTooltipAnimation.none,
+                    child: const Text('Target'),
+                  ),
+                  const SizedBox(height: 1000),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Target'));
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Scroll
+        await tester.drag(find.byType(ListView), const Offset(0, -100));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tooltip message'), findsNothing);
+      });
+
+      testWidgets('dismissOnScroll false keeps tooltip on scroll',
+          (WidgetTester tester) async {
+        final controller = TooltipController();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ListView(
+                children: [
+                  const SizedBox(height: 200),
+                  WidgetTooltip(
+                    message: const Text('Tooltip message'),
+                    controller: controller,
+                    dismissMode: WidgetTooltipDismissMode.manual,
+                    animation: WidgetTooltipAnimation.none,
+                    dismissOnScroll: false,
+                    child: const Text('Target'),
+                  ),
+                  const SizedBox(height: 1000),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        controller.show();
+        await tester.pumpAndSettle();
+        expect(find.text('Tooltip message'), findsOneWidget);
+
+        // Scroll
+        await tester.drag(find.byType(ListView), const Offset(0, -100));
+        await tester.pumpAndSettle();
+
+        // Should still be visible
+        expect(find.text('Tooltip message'), findsOneWidget);
+      });
+    });
   });
 }

@@ -1,3 +1,18 @@
+## 1.3.0
+
+### Features
+* **TooltipGroup**: Add `TooltipGroup` class to ensure only one tooltip is visible at a time within a group. Use `TooltipController(group: group)` to link controllers.
+* **dismissOnScroll**: Add `dismissOnScroll` property (default `true`) to automatically dismiss the tooltip when the nearest `Scrollable` ancestor scrolls.
+
+### Bug Fixes
+* **mounted check**: Add `mounted` guard in post-frame callback to prevent crashes when widget is disposed between phases.
+* **overlay cleanup**: Improve overlay removal safety with dedicated `_removeOverlay()` method.
+
+### Improvements
+* **Code refactoring**: Extract `_calculateLayout` into smaller methods (`_resolveAnchors`, `_resolveOffsets`) for better readability.
+* **Typed layout result**: Replace anonymous record with `_TooltipLayout` class for clarity.
+* **Extract overlay building**: Move final overlay construction to `_insertFinalOverlay` and `_buildCombinedTooltip` methods.
+
 ## 1.2.2
 
 ### Bug Fixes
