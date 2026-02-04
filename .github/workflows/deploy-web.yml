@@ -20,18 +20,16 @@ jobs:
           channel: 'stable'
 
       - name: Get dependencies
-        run: |
-          cd example
-          flutter pub get
+        run: flutter pub get
 
       - name: Build web
         run: |
-          cd example
+          cd apps/example
           flutter build web --base-href "/widget_tooltip/" --release
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./example/build/web
+          publish_dir: ./apps/example/build/web
           force_orphan: true

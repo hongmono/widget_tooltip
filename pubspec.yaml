@@ -1,18 +1,32 @@
-name: widget_tooltip
-description: "Widget Tooltip is a Flutter package that provides a tooltip widget that can be used to display a tooltip on any widget"
-version: 1.2.2
-repository: https://github.com/hongmono/widget_tooltip
-homepage: https://github.com/hongmono
+name: widget_tooltip_workspace
+publish_to: none
 
 environment:
-  sdk: '>=3.2.5 <4.0.0'
-  flutter: ">=3.10.0"
+  sdk: ">=3.6.0 <4.0.0"
 
-dependencies:
-  flutter:
-    sdk: flutter
+workspace:
+  - packages/widget_tooltip
+  - apps/example
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^6.0.0
+  melos: ^7.0.0
+
+melos:
+  repository: https://github.com/hongmono/widget_tooltip
+
+  scripts:
+    analyze:
+      run: dart analyze .
+      exec:
+        concurrency: 1
+      description: Run dart analyze in all packages.
+
+    test:
+      run: flutter test
+      packageFilters:
+        dirExists: test
+      description: Run flutter test in all packages.
+
+    format:
+      run: dart format .
+      description: Format all Dart files.
