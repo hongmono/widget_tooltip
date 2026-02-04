@@ -1,6 +1,6 @@
 name: burst_icon_button
 description: "A customizable Flutter widget that creates a burst effect when an icon button is tapped or long-pressed. Perfect for adding engaging animations to your app's buttons."
-version: 0.1.38
+version: 0.2.0
 homepage: https://github.com/hongmono/flutter-packages
 repository: https://github.com/hongmono/flutter-packages/tree/main/packages/burst_icon_button
 

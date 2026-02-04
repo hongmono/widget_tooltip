@@ -50,7 +50,7 @@ class HomePage extends StatelessWidget {
       route: '/burst_icon_button',
       icon: Icons.favorite,
       color: Colors.red,
-      version: '0.1.38',
+      version: '0.2.0',
     ),
     _PackageInfo(
       name: 'floating_widget',
@@ -58,7 +58,7 @@ class HomePage extends StatelessWidget {
       route: '/floating_widget',
       icon: Icons.drag_indicator,
       color: Colors.teal,
-      version: '0.0.1',
+      version: '0.1.0',
     ),
   ];
 
